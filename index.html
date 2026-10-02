@@ -1,1 +1,782 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e0e0e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WP משמרות">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<title>White-Pool · משמרות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+/* ===== פלטת צבעים — זמנית, תוחלף בצבעי האתר המקורי ===== */
+:root{
+  --primary:#e8336d; --primary-dark:#b81e52; --aqua:#38b6ff; --sun:#ffc533; --green:#1fd655; --purple:#7a35ff;
+  --bg:#fff8fb; --card:#ffffff; --text:#1a1420; --muted:#7b6f80; --line:#f1e3ea;
+  --ok:#14b85a; --warn:#f0a020; --danger:#e5484d;
+  --r:20px; --shadow:0 4px 18px rgba(232,51,109,.10);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:Heebo,"Segoe UI",Arial,sans-serif;direction:rtl;text-align:right}
+input,select,textarea,button{font:inherit;color:inherit;direction:rtl}
+button{cursor:pointer}
+.shell{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
+header.top{position:relative;overflow:hidden;color:#fff;padding:calc(env(safe-area-inset-top) + 12px) 16px 22px;background:#0e0e0e;
+  border-bottom-left-radius:26px;border-bottom-right-radius:26px}
+header.top::before,header.top::after{content:"";position:absolute;border-radius:50%;filter:blur(2px);opacity:.9}
+header.top::before{width:90px;height:90px;left:-24px;top:-28px;background:var(--aqua)}
+header.top::after{width:60px;height:60px;left:70px;bottom:-26px;background:var(--primary)}
+.logo-sm{width:46px;height:46px;border-radius:50%;background:#fff url(assets/logo.png) center/cover;flex:0 0 auto;box-shadow:0 0 0 3px var(--aqua)}
+.brand-wrap{display:flex;align-items:center;gap:10px}
+.top-row{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:10px;max-width:760px;margin:auto}
+.brand{font-weight:800;font-size:20px;letter-spacing:.2px}
+.brand small{display:block;font-weight:500;font-size:13px;opacity:.9}
+.top-actions{display:flex;gap:8px}
+.icon-btn{background:var(--purple);border:0;color:#fff;border-radius:12px 4px 12px 4px;padding:8px 12px;font-size:13px;font-weight:700}.icon-btn:nth-child(2){background:var(--green);color:#06210f}
+main{flex:1;width:100%;max-width:760px;margin:0 auto;padding:16px 14px 110px}
+.tabs{position:fixed;bottom:0;right:0;left:0;z-index:20;display:flex;justify-content:space-around;background:#fff;
+  border-top:1px solid var(--line);padding:6px 6px calc(env(safe-area-inset-bottom) + 6px);box-shadow:0 -4px 18px rgba(30,111,217,.08)}
+.tab{flex:1;max-width:160px;border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;border-radius:14px;color:var(--muted);font-size:12px;font-weight:500}
+.tab span{font-size:20px}
+.tab.on{color:var(--primary);background:#ffe6ef;font-weight:700}
+@media(min-width:800px){
+  .shell{flex-direction:column}
+  .tabs{position:static;order:1;justify-content:center;gap:8px;border-top:0;border-bottom:1px solid var(--line);box-shadow:none;padding:8px}
+  main{order:2;padding-bottom:40px}
+  .tab{flex-direction:row;gap:8px;max-width:none;flex:0 0 auto;padding:8px 18px;font-size:15px}
+}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:14px;margin-bottom:12px}
+h2{margin:4px 0 12px;font-size:20px}
+h3{margin:0 0 8px;font-size:16px}
+.muted{color:var(--muted);font-size:13px}
+.row{display:flex;align-items:center;gap:10px}
+.between{justify-content:space-between}
+.wrap{flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+.btn{border:0;border-radius:14px;padding:11px 18px;font-weight:700;background:var(--primary);color:#fff}
+.btn.sec{background:#ffe6ef;color:var(--primary)}
+.btn.ghost{background:none;color:var(--primary);border:1.5px solid var(--line)}
+.btn.danger{background:#fdecec;color:var(--danger)}
+.btn.ok{background:var(--ok)}
+.btn.sm{padding:7px 12px;font-size:13px;border-radius:11px}
+.btn.block{width:100%}
+.btn:disabled{opacity:.5}
+input[type=text],input[type=tel],input[type=date],select,textarea{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:12px;background:#fff;font-size:16px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--aqua);border-color:var(--aqua)}
+label.f{display:block;margin:10px 0 4px;font-size:13px;font-weight:700;color:var(--muted)}
+.chip{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700;background:#ffe6ef;color:var(--primary)}
+.chip.ok{background:#e3f7ee;color:var(--ok)} .chip.warn{background:#fff3dc;color:#b87400} .chip.bad{background:#fdecec;color:var(--danger)} .chip.grey{background:#eef2f7;color:var(--muted)}
+.weekbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.weekbar .lbl{font-weight:800;font-size:17px;text-align:center}
+.nav-btn{border:0;background:#fff;box-shadow:var(--shadow);border-radius:50%;width:40px;height:40px;font-size:18px;color:var(--primary);font-weight:800}
+.pills{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none}
+.pills::-webkit-scrollbar{display:none}
+.pill{flex:0 0 auto;min-width:58px;border:0;border-radius:14px;background:#fff;box-shadow:var(--shadow);padding:7px 8px;text-align:center;color:var(--muted);font-size:12px}
+.pill b{display:block;font-size:17px;color:var(--text)}
+.pill.on{background:#0e0e0e;color:#fff} .pill.on b{color:#fff}
+.pill.today b::after{content:"";display:block;width:6px;height:6px;border-radius:50%;background:var(--sun);margin:2px auto 0}
+.shift{display:flex;gap:10px;align-items:center;padding:11px 12px;border-radius:14px;background:#fff;box-shadow:var(--shadow);margin-bottom:8px;border-right:5px solid var(--aqua);cursor:pointer}
+.shift.w{border-right-color:var(--warn)} .shift.b{border-right-color:var(--danger)}
+.shift .hrs{font-weight:800;color:var(--primary);min-width:92px;font-size:14px}
+.shift .nm{font-weight:700} .shift .rl{font-size:13px;color:var(--muted)}
+.warn-line{font-size:12px;color:var(--danger);margin-top:2px} .warn-line.a{color:#b87400}
+.seg{display:flex;background:#f8eef2;border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:none;border-radius:10px;padding:9px 6px;font-weight:700;color:var(--muted);font-size:14px}
+.seg button.on{background:#fff;color:var(--primary);box-shadow:0 1px 6px rgba(0,0,0,.08)}
+.seg button.on.off{color:var(--danger)} .seg button.on.all{color:var(--ok)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.miss{outline:2px solid var(--danger)}
+.fab{position:fixed;left:16px;bottom:calc(env(safe-area-inset-bottom) + 84px);z-index:15;border:0;border-radius:999px;background:var(--sun);color:#3a2a00;font-weight:800;padding:14px 20px;box-shadow:0 8px 22px rgba(255,197,51,.55);font-size:15px}
+@media(min-width:800px){.fab{bottom:28px}}
+.empty{text-align:center;color:var(--muted);padding:26px 10px}
+.banner{background:#fff3dc;color:#8a5a00;border-radius:12px;padding:8px 12px;font-size:13px;margin-bottom:12px}
+#modal{position:fixed;inset:0;z-index:50;display:none}
+#modal.open{display:block}
+.backdrop{position:absolute;inset:0;background:rgba(10,30,60,.45)}
+.sheet{position:absolute;bottom:0;right:0;left:0;max-height:92vh;overflow:auto;background:#fff;border-radius:24px 24px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 18px);max-width:560px;margin:auto}
+@media(min-width:800px){.sheet{top:50%;bottom:auto;transform:translateY(-50%);border-radius:24px}}
+.sheet h2{margin-top:0}
+pre.exp{white-space:pre-wrap;background:#fff3f7;border-radius:12px;padding:12px;font-family:inherit;font-size:14px;max-height:50vh;overflow:auto;direction:rtl;text-align:right}
+#toast{position:fixed;bottom:100px;right:50%;transform:translateX(50%);background:#12263f;color:#fff;padding:10px 18px;border-radius:999px;z-index:60;opacity:0;pointer-events:none;transition:opacity .25s;font-size:14px;max-width:90vw}
+#toast.show{opacity:1}
+.center-screen{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:center;max-width:420px;margin:auto;padding:20px}
+.logo-ball{width:130px;height:130px;border-radius:50%;margin:0 auto 14px;background:#fff url(assets/logo.png) center/cover;box-shadow:0 0 0 5px var(--aqua),0 10px 28px rgba(0,0,0,.18);color:transparent;font-size:0;overflow:hidden}
+.checks{display:flex;flex-wrap:wrap;gap:8px}
+.checks label{display:flex;align-items:center;gap:6px;background:#f8eef2;border-radius:999px;padding:7px 12px;font-size:14px}
+.checks input{width:auto}
+.mine{border-right:5px solid var(--sun)}
+details summary{cursor:pointer;color:var(--primary);font-size:13px;font-weight:700;margin-top:8px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal"></div>
+<div id="toast"></div>
+<script src="firebase-config.js"></script>
+<script>
+"use strict";
+/* ================= עזרים ================= */
+const $=(s,el=document)=>el.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const DOW=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+const pad=n=>String(n).padStart(2,'0');
+const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const parse=s=>{const a=s.split('-').map(Number);return new Date(a[0],a[1]-1,a[2])};
+const addDays=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return iso(d)};
+const dowOf=s=>parse(s).getDay();
+const weekStart=s=>addDays(s,-dowOf(s));
+const todayIso=()=>iso(new Date());
+const fmtDay=s=>{const d=parse(s);return 'יום '+DOW[d.getDay()]+' '+d.getDate()+'/'+(d.getMonth()+1)+'/'+String(d.getFullYear()).slice(2)};
+const fmtDM=s=>{const d=parse(s);return d.getDate()+'/'+(d.getMonth()+1)};
+const toMin=t=>{const a=t.split(':').map(Number);return a[0]*60+a[1]};
+const fmtT=t=>t==='open'?'פתיחה':t==='close'?'סגירה':t;
+const noZero=t=>t.replace(/^0/,'');
+const normPhone=p=>String(p||'').replace(/\D/g,'').replace(/^972/,'0');
+const samePhone=(a,b)=>{a=normPhone(a);b=normPhone(b);return a.length>=9&&b.length>=9&&a.slice(-9)===b.slice(-9)};
+const intlPhone=p=>'972'+normPhone(p).replace(/^0/,'');
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('load '+src));document.head.appendChild(s)})}
+let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2400)}
 
+/* ================= שכבת נתונים (Firestore או מצב ניסיון) ================= */
+const COLS=['employees','roles','days','availability','shifts','weeks','settings'];
+const ALL=COLS.concat(['secrets','users']);
+const emailOf=p=>'p'+normPhone(p)+'@wp-shifts.example';
+const genPin=()=>{const a=new Uint32Array(1);crypto.getRandomValues(a);return String(a[0]%1000000).padStart(6,'0')};
+const Store={
+  mode:'demo',data:{},cbs:[],unsubs:[],cfg:null,
+  on(f){this.cbs.push(f)},emit(){this.cbs.forEach(f=>f())},
+  reset(){ALL.forEach(c=>this.data[c]={})},
+  async init(){
+    this.reset();
+    const cfg=window.FIREBASE_CONFIG;
+    if(cfg&&cfg.apiKey){
+      this.cfg=cfg;
+      const b='https://www.gstatic.com/firebasejs/9.23.0/';
+      await loadScript(b+'firebase-app-compat.js');
+      await loadScript(b+'firebase-auth-compat.js');
+      await loadScript(b+'firebase-firestore-compat.js');
+      firebase.initializeApp(cfg);this.db=firebase.firestore();this.auth=firebase.auth();this.mode='cloud';
+      if(cfg.emulator)this.useEmu(this.db,this.auth);
+    }else{
+      try{const raw=localStorage.getItem('wp_demo');if(raw)Object.assign(this.data,JSON.parse(raw))}catch(e){}
+      ALL.forEach(c=>{if(!this.data[c])this.data[c]={}});
+    }
+  },
+  async listen(isMgr,empId){
+    this.stop();this.reset();
+    const list=COLS.concat(isMgr?['secrets']:[]);
+    await Promise.all(list.map(c=>new Promise((res,rej)=>{
+      let first=true,q=this.db.collection(c);
+      if(c==='availability'&&!isMgr)q=q.where('empId','==',empId);
+      this.unsubs.push(q.onSnapshot(s=>{
+        const o={};s.forEach(d=>{o[d.id]=Object.assign({},d.data(),{id:d.id})});
+        this.data[c]=o;
+        if(first){first=false;res()}else this.emit();
+      },err=>{console.error(err);if(first){first=false;rej(err)}else if(this.onError)this.onError(err)}));
+    })));
+  },
+  stop(){this.unsubs.forEach(f=>f());this.unsubs=[]},
+  save(){try{localStorage.setItem('wp_demo',JSON.stringify(this.data))}catch(e){}},
+  newId(c){return this.mode==='cloud'?this.db.collection(c).doc().id:uid()},
+  set(c,id,obj){
+    obj=Object.assign({},obj,{id});this.data[c][id]=obj;
+    if(this.mode==='cloud')this.db.collection(c).doc(id).set(obj).catch(e=>{console.error(e);toast('שגיאת שמירה — '+(e.code==='permission-denied'?'אין הרשאה':'בדוק חיבור'))});
+    else this.save();
+    this.emit();
+  },
+  del(c,id){
+    delete this.data[c][id];
+    if(this.mode==='cloud')this.db.collection(c).doc(id).delete().catch(e=>{console.error(e);toast('שגיאת מחיקה')});
+    else this.save();
+    this.emit();
+  },
+  useEmu(db,auth){db.useEmulator('127.0.0.1',8080);auth.useEmulator('http://127.0.0.1:9099',{disableWarnings:true})},
+  secApp(){try{return firebase.app('sec')}catch(e){const a=firebase.initializeApp(this.cfg,'sec');if(this.cfg.emulator)a.auth().useEmulator('http://127.0.0.1:9099',{disableWarnings:true});return a}},
+  async provision(phone){ /* יוצר חשבון כניסה לעובד (אפליקציה משנית כדי לא לנתק את המנהל) */
+    const pin=genPin();
+    if(this.mode!=='cloud')return {uid:'demo-'+uid(),pin};
+    const sec=this.secApp();
+    const c=await sec.auth().createUserWithEmailAndPassword(emailOf(phone),pin);
+    await sec.auth().signOut();return {uid:c.user.uid,pin};
+  },
+  async resetPin(empId){
+    const s=D('secrets')[empId],pin=genPin();
+    if(this.mode==='cloud'){
+      const sec=this.secApp();
+      await sec.auth().signInWithEmailAndPassword(emailOf(s.phone),s.pin);
+      await sec.auth().currentUser.updatePassword(pin);
+      await sec.auth().signOut();
+    }
+    this.set('secrets',empId,Object.assign({},s,{pin}));return pin;
+  }
+};
+const D=c=>Store.data[c];
+const vals=c=>Object.values(Store.data[c]);
+const phoneOf=id=>(D('secrets')[id]||{}).phone||'';
+const authMsg=e=>{const c=(e&&e.code)||'';
+  if(/invalid-credential|wrong-password|user-not-found|invalid-email/.test(c))return 'טלפון או קוד שגויים';
+  if(c==='auth/too-many-requests')return 'יותר מדי ניסיונות — נסה שוב בעוד כמה דקות';
+  if(c==='auth/network-request-failed')return 'אין חיבור לאינטרנט';
+  if(c==='auth/email-already-in-use')return 'המספר הזה כבר רשום כמשתמש';
+  if(c==='auth/operation-not-allowed')return 'יש להפעיל Email/Password ב-Firebase Authentication';
+  return 'שגיאה: '+(c||(e&&e.message)||'לא ידועה')};
+
+/* ================= לוגיקה עסקית ================= */
+const DEF_HOURS={0:['09:30','20:00'],1:['09:30','20:00'],2:['09:30','20:00'],3:['09:30','20:00'],4:['09:30','20:00'],5:['09:30','14:00'],6:['18:30','23:00']};
+function hoursFor(date){
+  const d=D('days')[date];if(d)return {open:d.open,close:d.close,custom:true};
+  const s=D('settings').hours;const w=dowOf(date);
+  const m=s&&s.map&&s.map[w];
+  const x=m||{open:DEF_HOURS[w][0],close:DEF_HOURS[w][1]};
+  return {open:x.open,close:x.close,custom:false};
+}
+const resolve=(tok,date)=>tok==='open'?hoursFor(date).open:tok==='close'?hoursFor(date).close:tok;
+const emp=id=>D('employees')[id];
+const role=id=>D('roles')[id];
+const empName=id=>emp(id)?emp(id).name:'(עובד נמחק)';
+const roleName=id=>role(id)?role(id).name:'(תפקיד נמחק)';
+const sortedRoles=()=>vals('roles').sort((a,b)=>(a.order||0)-(b.order||0)||a.name.localeCompare(b.name,'he'));
+const activeEmps=()=>vals('employees').filter(e=>e.active!==false).sort((a,b)=>a.name.localeCompare(b.name,'he'));
+function availDoc(empId,ws){return D('availability')[ws+'_'+empId]}
+function availState(empId,date){
+  const a=availDoc(empId,weekStart(date));if(!a||!a.days||!a.days[date])return {s:'none'};
+  const d=a.days[date];if(d.t==='off')return {s:'off',note:d.note};
+  return {s:'on',from:d.t==='all'?'open':d.from,to:d.t==='all'?'close':d.to,note:d.note};
+}
+function fit(empId,date,from,to){
+  const a=availState(empId,date);if(a.s==='none')return 'none';if(a.s==='off')return 'off';
+  const f=toMin(resolve(from,date)),t=toMin(resolve(to,date)),af=toMin(resolve(a.from,date)),at=toMin(resolve(a.to,date));
+  return af<=f&&at>=t?'ok':'part';
+}
+function describeAvail(a){
+  if(a.s==='none')return 'לא הוזן';if(a.s==='off')return 'לא זמין/ה';
+  if(a.from==='open'&&a.to==='close')return 'כל היום';
+  return fmtT(a.from)+' – '+fmtT(a.to);
+}
+const shiftsOn=date=>vals('shifts').filter(s=>s.date===date).sort((a,b)=>
+  toMin(resolve(a.from,date))-toMin(resolve(b.from,date))||toMin(resolve(a.to,date))-toMin(resolve(b.to,date))||empName(a.empId).localeCompare(empName(b.empId),'he'));
+function warningsOf(s){
+  const w=[];const e=emp(s.empId);
+  if(!e)return [{lvl:'b',t:'העובד לא קיים'}];
+  if(!(e.roles||[]).includes(s.roleId))w.push({lvl:'b',t:'אין הרשאה לתפקיד הזה'});
+  const f=fit(s.empId,s.date,s.from,s.to);
+  if(f==='off')w.push({lvl:'b',t:'סימן/ה שלא זמין/ה ביום הזה'});
+  else if(f==='part')w.push({lvl:'b',t:'מחוץ לשעות הזמינות שהוגשו'});
+  else if(f==='none')w.push({lvl:'a',t:'לא הגיש/ה זמינות ליום הזה'});
+  const f1=toMin(resolve(s.from,s.date)),t1=toMin(resolve(s.to,s.date));
+  if(f1>=t1)w.push({lvl:'b',t:'שעת סיום לפני שעת התחלה'});
+  vals('shifts').forEach(o=>{
+    if(o.id===s.id||o.date!==s.date||o.empId!==s.empId)return;
+    const f2=toMin(resolve(o.from,o.date)),t2=toMin(resolve(o.to,o.date));
+    if(f1<t2&&f2<t1)w.push({lvl:'b',t:'חופפת למשמרת אחרת של אותו עובד'});
+  });
+  return w;
+}
+function exHours(s){
+  const o=noZero(resolve('open',s.date)),f=s.from==='open'?null:noZero(resolve(s.from,s.date)),t=s.to==='close'?null:noZero(resolve(s.to,s.date));
+  if(s.to==='close'){return f===null?'פתיחה-סגירה':f+'-סגירה'}
+  return (f===null?o:f)+'-'+t;
+}
+function dayText(date){
+  const rows=shiftsOn(date).map(s=>exHours(s)+' *'+empName(s.empId)+'* '+roleName(s.roleId));
+  return fmtDay(date)+'\n'+(rows.length?rows.join('\n'):'(אין משמרות)');
+}
+function weekText(ws){
+  const out=[];for(let i=0;i<7;i++){const d=addDays(ws,i);if(shiftsOn(d).length)out.push(dayText(d))}
+  return out.join('\n\n');
+}
+const weekPublished=ws=>!!(D('weeks')[ws]&&D('weeks')[ws].published);
+const weekLabel=ws=>fmtDM(ws)+' – '+fmtDM(addDays(ws,6));
+const nextWeek=()=>addDays(weekStart(todayIso()),7);
+
+/* ================= מצב האפליקציה ================= */
+const S={needSetup:false,creds:[],userId:localStorage.getItem('wp_user')||null,view:null,tab:null,
+  bWeek:nextWeek(),bDay:null,avWeek:nextWeek(),msWeek:weekStart(todayIso()),
+  draft:{},draftKey:'',draftSaved:false,missing:[],fatal:null};
+const me=()=>S.userId?emp(S.userId):null;
+const TABS={
+  manager:[['build','סידור','📅'],['avail','זמינות','🕒'],['emps','עובדים','👥'],['set','הגדרות','⚙️']],
+  worker:[['myav','הזמינות שלי','🕒'],['myshifts','המשמרות שלי','📅']]
+};
+const timeOpts=(from,to)=>{const a=[];for(let m=from;m<=to;m+=30)a.push(pad(Math.floor(m/60))+':'+pad(m%60));return a};
+const FROM_OPTS=['open'].concat(timeOpts(420,1350));
+const TO_OPTS=timeOpts(450,1410).concat(['close']);
+const HM_OPTS=timeOpts(360,1410);
+const optsHtml=(list,sel,lab)=>list.map(v=>'<option value="'+esc(v)+'"'+(v===sel?' selected':'')+'>'+esc(lab?lab(v):v)+'</option>').join('');
+
+/* ================= תצוגות ================= */
+function viewSetup(){
+  return '<div class="center-screen"><div class="logo-ball">🏊</div><h2 style="text-align:center">ברוכים הבאים ל-White-Pool משמרות</h2>'+
+  '<p class="muted" style="text-align:center">הגדרה ראשונית: צור את המנהל/ת הראשון/ה. אחר כך אפשר להוסיף עובדים ומנהלים נוספים.</p>'+
+  '<div class="card"><label class="f">שם מלא</label><input type="text" id="su-name" autocomplete="name">'+
+  '<label class="f">מספר טלפון</label><input type="tel" id="su-phone" inputmode="tel" placeholder="05X-XXXXXXX" autocomplete="tel">'+(Store.mode==='cloud'?'<label class="f">קוד כניסה אישי (6 ספרות)</label><input type="password" id="su-pin" inputmode="numeric" maxlength="6" autocomplete="new-password">':'')+
+  '<p class="muted">נוסיף גם את רשימת התפקידים הרגילה של המשחקייה (קופה, צמידים, מגלשות…) — אפשר לשנות אחר כך.</p>'+
+  '<button class="btn block" data-act="setup">התחל</button></div></div>';
+}
+function viewLogin(){
+  return '<div class="center-screen"><div class="logo-ball">🏊</div><h2 style="text-align:center">White-Pool · משמרות</h2>'+
+  '<p class="muted" style="text-align:center">כניסה עם הטלפון והקוד האישי שקיבלת מהמנהל</p>'+
+  '<div class="card"><label class="f">מספר טלפון</label><input type="tel" id="lg-phone" inputmode="tel" placeholder="05X-XXXXXXX" autocomplete="username">'+(Store.mode==='cloud'?'<label class="f">קוד כניסה (6 ספרות)</label><input type="password" id="lg-pin" inputmode="numeric" maxlength="6" autocomplete="current-password">':'')+
+  '<div style="height:12px"></div><button class="btn block" data-act="login">כניסה</button>'+
+  '<p class="muted" style="margin-bottom:0">אין לך קוד או שכחת אותו? פנה/י למנהל/ת המשמרות.</p></div>'+
+  (Store.mode==='demo'?'<div class="banner">מצב ניסיון — הנתונים נשמרים רק במכשיר הזה.</div>':'')+'</div>';
+}
+function viewShell(){
+  const u=me();
+  if(!S.view)S.view=u.isManager?'manager':'worker';
+  if(S.view==='manager'&&!u.isManager)S.view='worker';
+  const tabs=TABS[S.view];
+  if(!S.tab||!tabs.some(t=>t[0]===S.tab))S.tab=tabs[0][0];
+  let body='';
+  switch(S.tab){case'build':body=viewBuild();break;case'avail':body=viewAvailMgr();break;case'emps':body=viewEmps();break;case'set':body=viewSettings();break;
+    case'myav':body=viewMyAvail();break;case'myshifts':body=viewMyShifts();break}
+  return '<div class="shell"><header class="top"><div class="top-row"><div class="brand-wrap"><div class="logo-sm"></div><div class="brand">White-Pool<small>שלום '+esc(u.name.split(' ')[0])+'</small></div></div>'+
+    '<div class="top-actions">'+(u.isManager?'<button class="icon-btn" data-act="switchView">'+(S.view==='manager'?'תצוגת עובד':'תצוגת מנהל')+'</button>':'')+
+    '<button class="icon-btn" data-act="logout">יציאה</button></div></div></header>'+
+    '<nav class="tabs">'+tabs.map(t=>'<button class="tab'+(S.tab===t[0]?' on':'')+'" data-act="tab" data-t="'+t[0]+'"><span>'+t[2]+'</span>'+t[1]+'</button>').join('')+'</nav>'+
+    '<main>'+(Store.mode==='demo'?'<div class="banner">מצב ניסיון — הנתונים נשמרים רק במכשיר הזה. לחיבור למסד נתונים משותף ראה README.</div>':'')+body+'</main></div>';
+}
+function weekBar(key,ws){
+  return '<div class="weekbar"><button class="nav-btn" data-act="wk" data-key="'+key+'" data-d="7" aria-label="שבוע הבא">›</button>'+
+  '<div class="lbl">שבוע '+weekLabel(ws)+'</div>'+
+  '<button class="nav-btn" data-act="wk" data-key="'+key+'" data-d="-7" aria-label="שבוע קודם">‹</button></div>';
+}
+
+/* ---- עובד: זמינות ---- */
+function ensureDraft(){
+  const k=S.avWeek+'_'+S.userId;if(S.draftKey===k)return;
+  const ex=availDoc(S.userId,S.avWeek);
+  S.draft=ex&&ex.days?JSON.parse(JSON.stringify(ex.days)):{};S.draftSaved=!!ex;S.draftKey=k;S.missing=[];
+}
+function viewMyAvail(){
+  ensureDraft();
+  let h='<h2>הזמינות שלי</h2>'+weekBar('avWeek',S.avWeek);
+  h+='<div class="row between" style="margin-bottom:10px"><span class="chip '+(S.draftSaved?'ok':'warn')+'">'+(S.draftSaved?'הוגשה ✓':'עדיין לא הוגשה')+'</span>'+
+     '<button class="btn sec sm" data-act="avCopy">העתק מהשבוע הקודם</button></div>';
+  for(let i=0;i<7;i++){
+    const date=addDays(S.avWeek,i),d=S.draft[date],hr=hoursFor(date);
+    h+='<div class="card'+(S.missing.includes(date)?' miss':'')+'"><div class="row between"><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="muted">'+hr.open+'–'+hr.close+'</span></div>'+
+    '<div class="seg" style="margin-top:8px">'+
+      '<button class="off'+(d&&d.t==='off'?' on':'')+'" data-act="avType" data-date="'+date+'" data-t="off">לא זמין</button>'+
+      '<button class="all'+(d&&d.t==='all'?' on':'')+'" data-act="avType" data-date="'+date+'" data-t="all">כל היום</button>'+
+      '<button class="'+(d&&d.t==='range'?'on':'')+'" data-act="avType" data-date="'+date+'" data-t="range">שעות</button></div>';
+    if(d&&d.t==='range'){
+      h+='<div class="two" style="margin-top:8px"><div><label class="f">מ-</label><select data-chg="avFrom" data-date="'+date+'">'+optsHtml(FROM_OPTS,d.from,fmtT)+'</select></div>'+
+         '<div><label class="f">עד</label><select data-chg="avTo" data-date="'+date+'">'+optsHtml(TO_OPTS,d.to,fmtT)+'</select></div></div>';
+    }
+    if(d)h+='<input type="text" style="margin-top:8px" placeholder="הערה (לא חובה)" value="'+esc(d.note||'')+'" data-inp="avNote" data-date="'+date+'">';
+    h+='</div>';
+  }
+  return h+'<button class="btn block" data-act="avSubmit">'+(S.draftSaved?'עדכן זמינות':'שלח זמינות')+'</button>';
+}
+/* ---- עובד: המשמרות שלי ---- */
+function viewMyShifts(){
+  let h='<h2>המשמרות שלי</h2>'+weekBar('msWeek',S.msWeek);
+  if(!weekPublished(S.msWeek))return h+'<div class="card empty">הסידור לשבוע הזה עדיין לא פורסם.</div>';
+  const t=todayIso();let any=false;
+  for(let i=0;i<7;i++){
+    const date=addDays(S.msWeek,i),all=shiftsOn(date),mine=all.filter(s=>s.empId===S.userId);
+    if(mine.length)any=true;
+    h+='<div class="card'+(mine.length?' mine':'')+'"><div class="row between"><h3 style="margin:0">'+fmtDay(date)+(date===t?' <span class="chip">היום</span>':'')+'</h3></div>';
+    if(mine.length)h+=mine.map(s=>'<div class="row" style="margin-top:8px"><span style="font-weight:800;color:var(--primary)">'+esc(exHours(s))+'</span><span style="font-weight:700">'+esc(roleName(s.roleId))+'</span></div>').join('');
+    else h+='<div class="muted" style="margin-top:6px">אין לך משמרת ביום הזה</div>';
+    if(all.length)h+='<details><summary>מי עובד ביום הזה ('+all.length+')</summary>'+all.map(s=>'<div class="row" style="padding:5px 0;border-bottom:1px solid var(--line)"><span class="muted" style="min-width:92px">'+esc(exHours(s))+'</span><span class="grow"><b>'+esc(empName(s.empId))+'</b> · '+esc(roleName(s.roleId))+'</span></div>').join('')+'</details>';
+    h+='</div>';
+  }
+  if(!any)h+='<div class="muted" style="text-align:center">לא שובצת השבוע.</div>';
+  return h;
+}
+/* ---- מנהל: סידור ---- */
+function viewBuild(){
+  const ws=S.bWeek;
+  if(!S.bDay||weekStart(S.bDay)!==ws)S.bDay=(weekStart(todayIso())===ws?todayIso():ws);
+  const t=todayIso(),pub=weekPublished(ws),date=S.bDay,hr=hoursFor(date),list=shiftsOn(date);
+  let h='<h2>בניית סידור</h2>'+weekBar('bWeek',ws);
+  h+='<div class="row between wrap" style="margin-bottom:10px"><span class="chip '+(pub?'ok':'warn')+'">'+(pub?'פורסם — שינויים נראים לעובדים מיד':'טיוטה — העובדים עדיין לא רואים')+'</span>'+
+     '<div class="row"><button class="btn sec sm" data-act="exportWeek">שיתוף שבוע</button><button class="btn sm '+(pub?'ghost':'ok')+'" data-act="publish">'+(pub?'בטל פרסום':'פרסם לעובדים')+'</button></div></div>';
+  h+='<div class="pills">';
+  for(let i=0;i<7;i++){const d=addDays(ws,i);h+='<button class="pill'+(d===date?' on':'')+(d===t?' today':'')+'" data-act="day" data-date="'+d+'">'+DOW[i]+'<b>'+parse(d).getDate()+'</b>'+shiftsOn(d).length+' משמרות</button>'}
+  h+='</div><div class="card"><div class="row between wrap"><div><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="muted">פתיחה '+hr.open+' · סגירה '+hr.close+(hr.custom?' (מותאם)':'')+'</span></div>'+
+     '<div class="row wrap"><button class="btn ghost sm" data-act="dayHours">שעות היום</button><button class="btn ghost sm" data-act="copyDay">העתק מיום…</button><button class="btn sec sm" data-act="exportDay">שיתוף יום</button></div></div></div>';
+  if(!list.length)h+='<div class="card empty">אין משמרות ליום הזה. לחץ על "+ משמרת".</div>';
+  list.forEach(s=>{
+    const w=warningsOf(s),lvl=w.some(x=>x.lvl==='b')?'b':w.length?'w':'';
+    h+='<div class="shift '+lvl+'" data-act="shiftEdit" data-id="'+s.id+'"><div class="hrs">'+esc(exHours(s))+'</div><div class="grow"><div class="nm">'+esc(empName(s.empId))+'</div><div class="rl">'+esc(roleName(s.roleId))+'</div>'+
+       w.map(x=>'<div class="warn-line '+(x.lvl==='a'?'a':'')+'">⚠ '+esc(x.t)+'</div>').join('')+'</div></div>';
+  });
+  return h+'<button class="fab" data-act="shiftNew">+ משמרת</button>';
+}
+/* ---- מנהל: זמינות ---- */
+function viewAvailMgr(){
+  const ws=S.avWeek,emps=activeEmps().filter(e=>!e.isManager||(e.roles||[]).length);
+  let h='<h2>זמינות עובדים</h2>'+weekBar('avWeek',ws);
+  const done=emps.filter(e=>availDoc(e.id,ws)).length;
+  h+='<div class="muted" style="margin-bottom:10px">הגישו '+done+' מתוך '+emps.length+'</div>';
+  if(!emps.length)return h+'<div class="card empty">עדיין אין עובדים. הוסף בלשונית "עובדים".</div>';
+  emps.sort((a,b)=>(!!availDoc(a.id,ws))-(!!availDoc(b.id,ws))||a.name.localeCompare(b.name,'he'));
+  emps.forEach(e=>{
+    const ok=!!availDoc(e.id,ws);
+    h+='<div class="card"><div class="row between"><div class="grow" data-act="availView" data-id="'+e.id+'" style="cursor:pointer"><b>'+esc(e.name)+'</b><div class="muted">'+(ok?'הוגשה — לחץ לצפייה':'לא הוגשה')+'</div></div>'+
+       (ok?'<span class="chip ok">✓</span>':'<button class="btn sec sm" data-act="remind" data-id="'+e.id+'">תזכורת בוואטסאפ</button>')+'</div></div>';
+  });
+  return h;
+}
+/* ---- מנהל: עובדים ---- */
+function viewEmps(){
+  const all=vals('employees').sort((a,b)=>(a.active===false)-(b.active===false)||a.name.localeCompare(b.name,'he'));
+  let h='<div class="row between"><h2>עובדים</h2><button class="btn sm" data-act="empNew">+ עובד</button></div>';
+  all.forEach(e=>{
+    h+='<div class="card" style="'+(e.active===false?'opacity:.55':'')+'"><div class="row between" data-act="empEdit" data-id="'+e.id+'" style="cursor:pointer"><div class="grow"><b>'+esc(e.name)+'</b> '+(e.isManager?'<span class="chip">מנהל/ת</span>':'')+(e.active===false?' <span class="chip grey">בארכיון</span>':'')+
+       '<div class="muted">'+(phoneOf(e.id)?esc(phoneOf(e.id)):'<span class="chip bad">חסר טלפון — לא יוכל להיכנס</span>')+'</div><div class="muted">'+((e.roles||[]).map(roleName).join(' · ')||'אין תפקידים מוגדרים')+'</div></div><span class="muted">עריכה ›</span></div></div>';
+  });
+  return h;
+}
+/* ---- מנהל: הגדרות ---- */
+function viewSettings(){
+  let h='<h2>הגדרות</h2><div class="card"><h3>תפקידים / מתקנים</h3>';
+  sortedRoles().forEach(r=>{h+='<div class="row between" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>'+esc(r.name)+'</span><span class="row"><button class="btn ghost sm" data-act="roleRename" data-id="'+r.id+'">שנה שם</button><button class="btn danger sm" data-act="roleDel" data-id="'+r.id+'">מחק</button></span></div>'});
+  h+='<div class="row" style="margin-top:10px"><input type="text" id="newRole" placeholder="תפקיד חדש"><button class="btn sm" data-act="roleAdd">הוסף</button></div></div>';
+  h+='<div class="card"><h3>שעות פתיחה וסגירה — ברירת מחדל לפי יום בשבוע</h3><p class="muted">"פתיחה" ו"סגירה" במשמרות יתורגמו לשעות האלה. אפשר לשנות יום ספציפי (חופשה/חג) מתוך מסך הסידור.</p>';
+  for(let w=0;w<7;w++){
+    const s=D('settings').hours,m=(s&&s.map&&s.map[w])||{open:DEF_HOURS[w][0],close:DEF_HOURS[w][1]};
+    h+='<div class="row" style="margin:6px 0"><span style="min-width:62px;font-weight:700">'+DOW[w]+'</span><select data-chg="hrs" data-w="'+w+'" data-k="open">'+optsHtml(HM_OPTS,m.open)+'</select><span>–</span><select data-chg="hrs" data-w="'+w+'" data-k="close">'+optsHtml(HM_OPTS,m.close)+'</select></div>';
+  }
+  h+='</div><div class="card"><h3>ייבוא עובדים מקובץ</h3><p class="muted">קובץ CSV עם העמודות: שם, טלפון, תפקידים (מופרדים ב-;). עובדים שכבר קיימים (לפי שם) מדולגים. הקובץ לא נשמר בשום מקום מלבד המסד שלך.</p><button class="btn sec" data-act="impPick">בחר קובץ…</button><input type="file" id="impFile" accept=".csv,.txt" hidden data-chg="impFile"></div><div class="card"><h3>מצב מערכת</h3><div class="muted">'+(Store.mode==='cloud'?'מחובר למסד נתונים משותף (Firebase).':'מצב ניסיון — נתונים מקומיים בלבד.')+'</div></div>';
+  return h;
+}
+
+/* ================= חלונות ================= */
+function openModal(html){const m=$('#modal');m.innerHTML='<div class="backdrop" data-act="closeModal"></div><div class="sheet">'+html+'</div>';m.classList.add('open')}
+function closeModal(){const m=$('#modal');m.classList.remove('open');m.innerHTML=''}
+function empOptionsFor(roleId,showAll,date,from,to,selected){
+  let list=activeEmps();if(!showAll)list=list.filter(e=>(e.roles||[]).includes(roleId));
+  const rank={ok:0,part:1,none:2,off:3};
+  const rows=list.map(e=>({e,f:date?fit(e.id,date,from,to):'none'})).sort((a,b)=>rank[a.f]-rank[b.f]||a.e.name.localeCompare(b.e.name,'he'));
+  const mark={ok:'✓ ',part:'~ ',none:'? ',off:'✗ '};
+  return '<option value="">בחר עובד…</option>'+rows.map(r=>'<option value="'+r.e.id+'"'+(r.e.id===selected?' selected':'')+'>'+mark[r.f]+esc(r.e.name)+(r.f==='off'?' (לא זמין)':r.f==='part'?' (חלקי)':r.f==='none'?' (לא הגיש)':'')+(showAll&&!(r.e.roles||[]).includes(roleId)?' · ללא הרשאה':'')+'</option>').join('');
+}
+function shiftModal(id,date){
+  const s=id?D('shifts')[id]:{date,from:'open',to:'close',roleId:'',empId:''};
+  S.sm={id,date:s.date,touched:false};
+  const roles=sortedRoles();
+  openModal('<h2>'+(id?'עריכת משמרת':'משמרת חדשה')+' · '+fmtDay(s.date)+'</h2>'+
+   '<label class="f">תפקיד</label><select id="sm-role" data-chg="smRole"><option value="">בחר תפקיד…</option>'+roles.map(r=>'<option value="'+r.id+'"'+(r.id===s.roleId?' selected':'')+'>'+esc(r.name)+'</option>').join('')+'</select>'+
+   '<div class="two"><div><label class="f">משעה</label><select id="sm-from" data-chg="smTime">'+optsHtml(FROM_OPTS,s.from,fmtT)+'</select></div><div><label class="f">עד שעה</label><select id="sm-to" data-chg="smTime">'+optsHtml(TO_OPTS,s.to,fmtT)+'</select></div></div>'+
+   '<label class="f">עובד <span style="font-weight:400">(✓ זמין · ~ חלקי · ? לא הגיש · ✗ לא זמין)</span></label><select id="sm-emp" data-chg="smEmp">'+empOptionsFor(s.roleId,false,s.date,s.from,s.to,s.empId)+'</select>'+
+   '<div class="checks" style="margin-top:8px"><label><input type="checkbox" id="sm-all" data-chg="smAll"> הצג גם עובדים ללא הרשאה לתפקיד</label></div>'+
+   '<div style="height:14px"></div><div class="row"><button class="btn grow" data-act="shiftSave">שמור</button>'+(id?'<button class="btn danger" data-act="shiftDel">מחק</button>':'')+'<button class="btn ghost" data-act="closeModal">ביטול</button></div>');
+}
+function refreshEmpSelect(){
+  const sel=$('#sm-emp');if(!sel)return;
+  sel.innerHTML=empOptionsFor($('#sm-role').value,$('#sm-all').checked,S.sm.date,$('#sm-from').value,$('#sm-to').value,sel.value);
+}
+function empModal(id){
+  const e=id?emp(id):{name:'',roles:[],isManager:false,active:true},sec=id?D('secrets')[id]:null;
+  openModal('<h2>'+(id?'עריכת עובד':'עובד חדש')+'</h2><input type="hidden" id="em-id" value="'+(id||'')+'">'+
+    '<label class="f">שם מלא</label><input type="text" id="em-name" value="'+esc(e.name)+'">'+
+    '<label class="f">טלפון (לכניסה)</label><input type="tel" id="em-phone" inputmode="tel" value="'+esc(phoneOf(id))+'">'+(sec&&sec.pin?'<label class="f">קוד כניסה</label><div class="row wrap"><b style="letter-spacing:4px;font-size:20px">'+esc(sec.pin)+'</b><button class="btn sec sm" data-act="empPinSend" data-id="'+id+'">שלח בוואטסאפ</button><button class="btn ghost sm" data-act="empPinReset" data-id="'+id+'">אפס קוד</button></div>':'')+
+    '<label class="f">תפקידים שהעובד יכול לעבוד בהם</label><div class="checks">'+sortedRoles().map(r=>'<label><input type="checkbox" class="em-role" value="'+r.id+'"'+((e.roles||[]).includes(r.id)?' checked':'')+'>'+esc(r.name)+'</label>').join('')+'</div>'+
+    '<div class="checks" style="margin-top:12px"><label><input type="checkbox" id="em-mgr"'+(e.isManager?' checked':'')+'> מנהל/ת (בונה סידור)</label>'+(id?'<label><input type="checkbox" id="em-active"'+(e.active!==false?' checked':'')+'> פעיל/ה</label>':'')+'</div>'+
+    '<div style="height:14px"></div><div class="row"><button class="btn grow" data-act="empSave">שמור</button><button class="btn ghost" data-act="closeModal">ביטול</button></div>');
+}
+function loginMsg(c){return 'שלום '+c.name.split(' ')[0]+', כניסה לאפליקציית המשמרות של White-Pool:\n'+location.origin+location.pathname+'\nטלפון: '+c.phone+'\nקוד כניסה: '+c.pin}
+function credsModal(list){
+  S.creds=list;
+  openModal('<h2>קודי כניסה חדשים</h2><p class="muted">שלח לכל עובד את הקוד שלו (בוואטסאפ). הקוד נשמר ותוכל לראות אותו שוב בעריכת העובד.</p>'+
+    list.map((c,i)=>'<div class="row between" style="padding:7px 0;border-bottom:1px solid var(--line)"><div class="grow"><b>'+esc(c.name)+'</b><div class="muted">'+esc(c.phone)+' · <b style="letter-spacing:2px">'+esc(c.pin)+'</b></div></div><button class="btn sec sm" data-act="sendPin" data-i="'+i+'">וואטסאפ</button></div>').join('')+
+    '<div class="row" style="margin-top:12px"><button class="btn sec grow" data-act="copyCreds">העתק הכול</button><button class="btn ghost" data-act="closeModal">סגור</button></div>');
+}
+function exportModal(title,text){
+  S.exp=text;
+  openModal('<h2>'+esc(title)+'</h2><pre class="exp">'+esc(text)+'</pre><div class="row" style="margin-top:12px"><button class="btn ok grow" data-act="shareWa">שלח בוואטסאפ</button><button class="btn sec" data-act="copyTxt">העתק</button><button class="btn ghost" data-act="closeModal">סגור</button></div>');
+}
+
+/* ================= פעולות ================= */
+const SEED_ROLES=['קופה','צמידים','מגלשות','אחמ״שית קומה תחתונה','תיגבור ואיפוס','אבובים','חצי פייפ','קיר טיפוס','סליידר','מסוע','טרמפולינות','אייר בג','אחמ״ש כללי'];
+function loginAs(id){S.userId=id;localStorage.setItem('wp_user',id);S.view=null;S.tab=null;S.draftKey='';render()}
+const A={
+  async setup(){
+    const name=$('#su-name').value.trim(),phone=normPhone($('#su-phone').value);
+    if(!name||phone.length<9)return toast('נא למלא שם וטלפון תקין');
+    const empId=Store.newId('employees');
+    if(Store.mode==='cloud'){
+      const pin=($('#su-pin').value||'').trim();
+      if(!/^\d{6}$/.test(pin))return toast('הקוד חייב להיות 6 ספרות');
+      let cred;try{cred=await Store.auth.createUserWithEmailAndPassword(emailOf(phone),pin)}catch(e){return toast(authMsg(e))}
+      const uid=cred.user.uid,db=Store.db;
+      try{
+        await db.doc('users/'+uid).set({empId,isManager:true,active:true});
+        const b=db.batch();
+        b.set(db.doc('employees/'+empId),{id:empId,name,roles:[],isManager:true,active:true,uid});
+        b.set(db.doc('secrets/'+empId),{id:empId,phone,pin});
+        SEED_ROLES.forEach((n,i)=>{const r=db.collection('roles').doc();b.set(r,{id:r.id,name:n,order:i})});
+        b.set(db.doc('meta/bootstrap'),{at:Date.now()});
+        await b.commit();
+      }catch(e){
+        console.error(e);
+        try{await db.doc('users/'+uid).delete()}catch(x){}
+        try{await cred.user.delete()}catch(x){}
+        return toast('שגיאה בהגדרה ראשונית: '+(e.code||e.message)+' — בדוק שפרסמת את כללי Firestore');
+      }
+      S.needSetup=false;await startSession(cred.user);
+    }else{
+      SEED_ROLES.forEach((n,i)=>Store.set('roles',Store.newId('roles'),{name:n,order:i}));
+      Store.set('employees',empId,{name,isManager:true,roles:[],active:true,uid:'demo-'+empId});
+      Store.set('secrets',empId,{phone,pin:''});
+      loginAs(empId);
+    }
+  },
+  async login(){
+    const p=$('#lg-phone').value;
+    if(Store.mode==='cloud'){
+      const pin=($('#lg-pin').value||'').trim();
+      if(normPhone(p).length<9||pin.length<6)return toast('נא למלא טלפון וקוד (6 ספרות)');
+      try{await Store.auth.signInWithEmailAndPassword(emailOf(p),pin)}catch(e){return toast(authMsg(e))}
+      await startSession(Store.auth.currentUser);
+    }else{
+      const id=Object.keys(D('secrets')).find(k=>samePhone(D('secrets')[k].phone,p)&&emp(k)&&emp(k).active!==false);
+      if(!id)return toast('המספר לא רשום במערכת');loginAs(id);
+    }
+  },
+  async logout(){
+    if(Store.mode==='cloud'){Store.stop();Store.reset();try{await Store.auth.signOut()}catch(e){}}
+    localStorage.removeItem('wp_user');S.userId=null;S.view=null;S.tab=null;render();
+  },
+  switchView(){S.view=S.view==='manager'?'worker':'manager';S.tab=null;render()},
+  tab(d){S.tab=d.t;render();window.scrollTo(0,0)},
+  wk(d){
+    S[d.key]=addDays(S[d.key],+d.d);
+    if(d.key==='bWeek')S.bDay=null;
+    render();
+  },
+  day(d){S.bDay=d.date;render()},
+  closeModal(){closeModal()},
+  /* זמינות עובד */
+  avType(d){
+    const old=S.draft[d.date]||{};
+    S.draft[d.date]={t:d.t,from:old.from||'open',to:old.to||'close',note:old.note||''};
+    S.missing=S.missing.filter(x=>x!==d.date);render();
+  },
+  avCopy(){
+    const prev=availDoc(S.userId,addDays(S.avWeek,-7));
+    if(!prev)return toast('אין זמינות מוגשת לשבוע הקודם');
+    const o={};for(let i=0;i<7;i++){const from=addDays(S.avWeek,i-7),to=addDays(S.avWeek,i);if(prev.days&&prev.days[from])o[to]=Object.assign({},prev.days[from])}
+    S.draft=o;S.missing=[];render();toast('הועתק — בדוק ושלח');
+  },
+  avSubmit(){
+    const miss=[];for(let i=0;i<7;i++){const d=addDays(S.avWeek,i);if(!S.draft[d])miss.push(d)}
+    if(miss.length){S.missing=miss;render();return toast('נא לסמן את כל הימים')}
+    for(let i=0;i<7;i++){const d=addDays(S.avWeek,i),x=S.draft[d];
+      if(x.t==='range'&&toMin(resolve(x.from,d))>=toMin(resolve(x.to,d))){S.missing=[d];render();return toast('בדוק את השעות ב'+fmtDay(d))}}
+    Store.set('availability',S.avWeek+'_'+S.userId,{empId:S.userId,weekStart:S.avWeek,days:S.draft,updatedAt:Date.now()});
+    S.draftSaved=true;S.missing=[];render();toast('הזמינות נשלחה ✓');
+  },
+  /* מנהל: זמינות */
+  remind(d){
+    const e=emp(d.id);if(!phoneOf(d.id))return toast('לעובד הזה אין טלפון');const url=location.href.split('#')[0];
+    const t='היי '+e.name.split(' ')[0]+', נא להגיש זמינות לשבוע '+weekLabel(S.avWeek)+' באפליקציה: '+url;
+    window.open('https://wa.me/'+intlPhone(phoneOf(d.id))+'?text='+encodeURIComponent(t),'_blank');
+  },
+  availView(d){
+    const e=emp(d.id);let h='<h2>'+esc(e.name)+' · שבוע '+weekLabel(S.avWeek)+'</h2>';
+    const doc=availDoc(d.id,S.avWeek);
+    for(let i=0;i<7;i++){const date=addDays(S.avWeek,i),a=availState(d.id,date);
+      const note=doc&&doc.days&&doc.days[date]&&doc.days[date].note;
+      h+='<div class="row" style="padding:7px 0;border-bottom:1px solid var(--line)"><b style="min-width:110px">'+DOW[i]+' '+fmtDM(date)+'</b><span class="grow">'+describeAvail(a)+(note?'<div class="muted">'+esc(note)+'</div>':'')+'</span></div>'}
+    openModal(h+'<div style="height:12px"></div><button class="btn ghost block" data-act="closeModal">סגור</button>');
+  },
+  /* משמרות */
+  shiftNew(){shiftModal(null,S.bDay)},
+  shiftEdit(d){shiftModal(d.id,D('shifts')[d.id].date)},
+  shiftSave(){
+    const roleId=$('#sm-role').value,empId=$('#sm-emp').value,from=$('#sm-from').value,to=$('#sm-to').value;
+    if(!roleId)return toast('בחר תפקיד');if(!empId)return toast('בחר עובד');
+    const s={id:S.sm.id||Store.newId('shifts'),date:S.sm.date,empId,roleId,from,to};
+    if(toMin(resolve(from,s.date))>=toMin(resolve(to,s.date)))return toast('שעת הסיום חייבת להיות אחרי ההתחלה');
+    const w=warningsOf(s);
+    if(w.length&&!confirm('יש אזהרות:\n• '+w.map(x=>x.t).join('\n• ')+'\n\nלשמור בכל זאת?'))return;
+    Store.set('shifts',s.id,{date:s.date,empId,roleId,from,to});closeModal();
+  },
+  shiftDel(){if(!confirm('למחוק את המשמרת?'))return;Store.del('shifts',S.sm.id);closeModal()},
+  publish(){
+    const ws=S.bWeek,pub=weekPublished(ws);
+    if(!confirm(pub?'לבטל פרסום? העובדים לא יראו את הסידור.':'לפרסם את הסידור לשבוע '+weekLabel(ws)+'? העובדים יראו אותו מיד.'))return;
+    Store.set('weeks',ws,{published:!pub,at:Date.now()});toast(pub?'הפרסום בוטל':'הסידור פורסם ✓');
+  },
+  dayHours(){
+    const date=S.bDay,h=hoursFor(date);
+    openModal('<h2>שעות '+fmtDay(date)+'</h2><p class="muted">משפיע על התרגום של "פתיחה" ו"סגירה" ביום הזה בלבד.</p><div class="two"><div><label class="f">פתיחה</label><select id="dh-open">'+optsHtml(HM_OPTS,h.open)+'</select></div><div><label class="f">סגירה</label><select id="dh-close">'+optsHtml(HM_OPTS,h.close)+'</select></div></div>'+
+      '<div style="height:14px"></div><div class="row"><button class="btn grow" data-act="dayHoursSave">שמור</button>'+(h.custom?'<button class="btn ghost" data-act="dayHoursReset">אפס</button>':'')+'<button class="btn ghost" data-act="closeModal">ביטול</button></div>');
+  },
+  dayHoursSave(){
+    const o=$('#dh-open').value,c=$('#dh-close').value;if(toMin(o)>=toMin(c))return toast('הסגירה חייבת להיות אחרי הפתיחה');
+    Store.set('days',S.bDay,{open:o,close:c});closeModal();
+  },
+  dayHoursReset(){Store.del('days',S.bDay);closeModal()},
+  copyDay(){
+    openModal('<h2>העתקת משמרות ליום '+fmtDay(S.bDay)+'</h2><p class="muted">המשמרות מהיום שתבחר יתווספו ליום הזה (אותם עובדים ותפקידים, ללא מחיקה של מה שקיים). ברירת מחדל: אותו יום בשבוע שעבר.</p><label class="f">העתק מתאריך</label><input type="date" id="cd-date" value="'+addDays(S.bDay,-7)+'">'+
+      '<div style="height:14px"></div><div class="row"><button class="btn grow" data-act="copyDayGo">העתק</button><button class="btn ghost" data-act="closeModal">ביטול</button></div>');
+  },
+  copyDayGo(){
+    const src=$('#cd-date').value;if(!src)return toast('בחר תאריך');
+    const list=shiftsOn(src);if(!list.length)return toast('אין משמרות ביום המקור');
+    list.forEach(s=>Store.set('shifts',Store.newId('shifts'),{date:S.bDay,empId:s.empId,roleId:s.roleId,from:s.from,to:s.to}));
+    closeModal();toast('הועתקו '+list.length+' משמרות — בדוק אזהרות');
+  },
+  exportDay(){exportModal('שיתוף '+fmtDay(S.bDay),dayText(S.bDay))},
+  exportWeek(){const t=weekText(S.bWeek);if(!t)return toast('אין משמרות בשבוע הזה');exportModal('שיתוף שבוע '+weekLabel(S.bWeek),t)},
+  shareWa(){window.open('https://wa.me/?text='+encodeURIComponent(S.exp),'_blank')},
+  async copyTxt(){
+    try{await navigator.clipboard.writeText(S.exp)}catch(e){const t=document.createElement('textarea');t.value=S.exp;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}
+    toast('הועתק ✓');
+  },
+  /* עובדים */
+  empNew(){empModal(null)},
+  empEdit(d){empModal(d.id)},
+  async empSave(){
+    const id=$('#em-id').value||Store.newId('employees'),name=$('#em-name').value.trim(),phone=normPhone($('#em-phone').value);
+    if(!name||(phone&&phone.length<9))return toast('נא למלא שם וטלפון תקין');
+    if(phone&&Object.keys(D('secrets')).some(k=>k!==id&&samePhone(D('secrets')[k].phone,phone)))return toast('המספר כבר קיים אצל עובד אחר');
+    const old=emp(id),isManager=$('#em-mgr').checked,activeEl=$('#em-active'),active=activeEl?activeEl.checked:true;
+    const others=vals('employees').filter(e=>e.id!==id&&e.isManager&&e.active!==false).length;
+    if(!others&&(!isManager||!active))return toast('חייב להישאר לפחות מנהל/ת פעיל/ה אחד/ת');
+    const roles=[...document.querySelectorAll('.em-role:checked')].map(x=>x.value);
+    let uid=old&&old.uid,newCred=null;
+    const phoneChanged=phone&&!samePhone(phoneOf(id),phone);
+    if(phone&&(!uid||phoneChanged)){
+      try{newCred=await Store.provision(phone)}catch(e){return toast(authMsg(e))}
+      if(uid)Store.set('users',uid,{empId:id,isManager:false,active:false}); /* חשבון ישן — מושבת */
+      uid=newCred.uid;Store.set('secrets',id,{phone,pin:newCred.pin});
+    }
+    Store.set('employees',id,Object.assign({},old,{name,roles,isManager,active,uid:uid||null}));
+    if(uid)Store.set('users',uid,{empId:id,isManager,active});
+    if(newCred)credsModal([{name,phone,pin:newCred.pin}]);else closeModal();
+  },
+  empPinSend(d){const s=D('secrets')[d.id];window.open('https://wa.me/'+intlPhone(s.phone)+'?text='+encodeURIComponent(loginMsg({name:empName(d.id),phone:s.phone,pin:s.pin})),'_blank')},
+  async empPinReset(d){
+    if(!confirm('לאפס את הקוד של '+empName(d.id)+'? הקוד הישן יפסיק לעבוד.'))return;
+    try{await Store.resetPin(d.id);toast('הקוד אופס');empModal(d.id)}catch(e){toast(authMsg(e))}
+  },
+  sendPin(d){const c=S.creds[+d.i];window.open('https://wa.me/'+intlPhone(c.phone)+'?text='+encodeURIComponent(loginMsg(c)),'_blank')},
+  async copyCreds(){
+    const t=S.creds.map(c=>c.name+' | '+c.phone+' | '+c.pin).join('\n');
+    try{await navigator.clipboard.writeText(t)}catch(e){}
+    toast('הועתק ✓');
+  },
+  /* תפקידים והגדרות */
+  roleAdd(){const n=$('#newRole').value.trim();if(!n)return;if(vals('roles').some(r=>r.name===n))return toast('התפקיד כבר קיים');Store.set('roles',Store.newId('roles'),{name:n,order:vals('roles').length})},
+  roleRename(d){const r=role(d.id),n=prompt('שם חדש לתפקיד:',r.name);if(n&&n.trim())Store.set('roles',r.id,Object.assign({},r,{name:n.trim()}))},
+  roleDel(d){
+    if(vals('shifts').some(s=>s.roleId===d.id))return alert('יש משמרות שמשויכות לתפקיד הזה. אפשר לשנות את שמו במקום למחוק.');
+    if(!confirm('למחוק את התפקיד "'+roleName(d.id)+'"?'))return;
+    Store.del('roles',d.id);
+    vals('employees').forEach(e=>{if((e.roles||[]).includes(d.id))Store.set('employees',e.id,Object.assign({},e,{roles:e.roles.filter(x=>x!==d.id)}))});
+  }
+};
+async function importCsv(text){
+  text=text.replace(/^﻿/,'');
+  const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  if(lines.length<2)return toast('הקובץ ריק');
+  const byName={};vals('roles').forEach(r=>byName[r.name]=r.id);
+  const have=new Set(vals('employees').map(e=>e.name.trim()));
+  const creds=[];let added=0,skipped=0,failed=0;
+  toast('מייבא… (עשוי לקחת כמה שניות)');
+  for(const l of lines.slice(1)){
+    const c=l.split(',').map(x=>x.trim().replace(/^"|"$/g,''));
+    const name=c[0],phone=normPhone(c[1]||''),rn=(c[2]||'').split(';').map(x=>x.trim()).filter(Boolean);
+    if(!name)continue;
+    if(have.has(name)||(phone&&Object.keys(D('secrets')).some(k=>samePhone(D('secrets')[k].phone,phone)))){skipped++;continue}
+    const roles=rn.map(n=>{if(!byName[n]){const id=Store.newId('roles');Store.set('roles',id,{name:n,order:vals('roles').length});byName[n]=id}return byName[n]});
+    const id=Store.newId('employees');let uid=null;
+    if(phone){
+      try{const r=await Store.provision(phone);uid=r.uid;Store.set('secrets',id,{phone,pin:r.pin});creds.push({name,phone,pin:r.pin})}
+      catch(e){console.error(e);failed++;continue}
+    }
+    Store.set('employees',id,{name,roles,isManager:false,active:true,uid});
+    if(uid)Store.set('users',uid,{empId:id,isManager:false,active:true});
+    have.add(name);added++;
+  }
+  toast('יובאו '+added+' עובדים'+(skipped?' · דולגו '+skipped:'')+(failed?' · נכשלו '+failed:''));
+  if(creds.length)credsModal(creds);
+}
+const C={ /* שינוי ערך בשדה */
+  impFile(el){const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{importCsv(String(r.result));el.value=''};r.readAsText(f,'utf-8')},
+  avFrom(el){S.draft[el.dataset.date].from=el.value},
+  avTo(el){S.draft[el.dataset.date].to=el.value},
+  hrs(el){
+    const s=D('settings').hours,map=Object.assign({},(s&&s.map)||{});
+    for(let w=0;w<7;w++)if(!map[w])map[w]={open:DEF_HOURS[w][0],close:DEF_HOURS[w][1]};
+    map[el.dataset.w]=Object.assign({},map[el.dataset.w],{[el.dataset.k]:el.value});
+    Store.set('settings','hours',{map});
+  },
+  smRole(){refreshEmpSelect()},smTime(){refreshEmpSelect()},smAll(){refreshEmpSelect()},
+  smEmp(el){
+    const e=emp(el.value);if(!e)return;
+    const a=availState(e.id,S.sm.date);
+    if(a.s==='on'&&!S.sm.touched){$('#sm-from').value=a.from;$('#sm-to').value=a.to}
+  }
+};
+document.addEventListener('click',ev=>{
+  const el=ev.target.closest('[data-act]');if(!el)return;
+  if(el.dataset.act==='closeModal'&&!el.classList.contains('backdrop')&&el.tagName!=='BUTTON')return;
+  const f=A[el.dataset.act];if(f)f(el.dataset,el);
+});
+document.addEventListener('change',ev=>{
+  const el=ev.target.closest('[data-chg]');if(!el)return;
+  if(el.id==='sm-from'||el.id==='sm-to')S.sm.touched=true;
+  const f=C[el.dataset.chg];if(f)f(el);
+});
+document.addEventListener('input',ev=>{
+  const el=ev.target;if(el.dataset&&el.dataset.inp==='avNote')S.draft[el.dataset.date].note=el.value;
+});
+document.addEventListener('keydown',ev=>{
+  if(ev.key==='Enter'&&(ev.target.id==='lg-phone'||ev.target.id==='lg-pin'))A.login();
+});
+
+/* ================= הצגה ================= */
+async function startSession(user){
+  const ud=await Store.db.doc('users/'+user.uid).get();
+  if(!ud.exists||ud.data().active===false){await Store.auth.signOut();toast('אין הרשאת כניסה לחשבון הזה');return false}
+  S.userId=ud.data().empId;S.view=null;S.tab=null;S.draftKey='';
+  await Store.listen(!!ud.data().isManager,S.userId);
+  render();return true;
+}
+function render(){
+  const app=$('#app');
+  if(S.fatal){app.innerHTML='<div class="center-screen"><div class="logo-ball">📡</div><h2 style="text-align:center">אין חיבור לנתונים</h2><p class="muted" style="text-align:center">'+esc(S.fatal)+'</p><button class="btn block" onclick="location.reload()">נסה שוב</button></div>';return}
+  const a=document.activeElement;
+  if(a&&a.matches&&a.matches('input[type=text],input[type=tel],textarea')&&app.contains(a)&&me())return; /* לא מפריעים להקלדה */
+  if(Store.mode==='cloud'){
+    if(!S.userId){app.innerHTML=S.needSetup?viewSetup():viewLogin();return}
+  }else{
+    if(!vals('employees').length){app.innerHTML=viewSetup();return}
+    if(S.userId&&(!me()||me().active===false)){S.userId=null;localStorage.removeItem('wp_user')}
+    if(!me()){app.innerHTML=viewLogin();return}
+  }
+  if(!me()){A.logout();return}
+  app.innerHTML=viewShell();
+}
+(async function boot(){
+  try{
+    await Store.init();
+    if(Store.mode==='cloud'){
+      S.userId=null;
+      Store.onError=e=>{if(e&&e.code==='permission-denied'){A.logout();toast('אין הרשאה — התחבר מחדש')}};
+      S.needSetup=!(await Store.db.doc('meta/bootstrap').get()).exists;
+      const user=await new Promise(res=>{const u=Store.auth.onAuthStateChanged(x=>{u();res(x)})});
+      if(user)await startSession(user);
+    }
+  }catch(e){console.error(e);S.fatal='לא הצלחנו להתחבר למסד הנתונים. בדוק אינטרנט, שכללי Firestore פורסמו ושהתחברות Email/Password מופעלת.';render();return}
+  Store.on(render);render();
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+</body>
+</html>
