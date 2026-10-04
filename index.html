@@ -306,7 +306,7 @@ const weekLabel=ws=>fmtDM(ws)+' – '+fmtDM(addDays(ws,6));
 const nextWeek=()=>addDays(weekStart(todayIso()),7);
 
 /* ================= מצב האפליקציה ================= */
-const S={needSetup:false,creds:[],userId:localStorage.getItem('wp_user')||null,view:null,tab:null,
+const S={empQ:'',empRole:'',empStatus:'all',avDay:null,needSetup:false,creds:[],userId:localStorage.getItem('wp_user')||null,view:null,tab:null,
   bWeek:nextWeek(),bDay:null,avWeek:nextWeek(),msWeek:weekStart(todayIso()),
   draft:{},draftKey:'',draftSaved:false,missing:[],fatal:null};
 const me=()=>S.userId?emp(S.userId):null;
@@ -423,29 +423,67 @@ function viewBuild(){
   return h+'<button class="fab" data-act="shiftNew">+ משמרת</button>';
 }
 /* ---- מנהל: זמינות ---- */
+function availSection(title,cls,items){
+  return '<div class="row between" style="margin:14px 2px 8px"><h3 style="margin:0">'+title+'</h3><span class="chip '+cls+'">'+items.length+'</span></div>'+
+    (items.length?items.join(''):'<div class="muted" style="margin:0 4px 6px">אין עובדים בקבוצה הזו</div>');
+}
 function viewAvailMgr(){
   const ws=S.avWeek,emps=activeEmps().filter(e=>!e.isManager||(e.roles||[]).length);
+  if(S.avDay&&weekStart(S.avDay)!==ws)S.avDay=null;
   let h='<h2>זמינות עובדים</h2>'+weekBar('avWeek',ws);
-  const done=emps.filter(e=>availDoc(e.id,ws)).length;
-  h+='<div class="muted" style="margin-bottom:10px">הגישו '+done+' מתוך '+emps.length+'</div>';
   if(!emps.length)return h+'<div class="card empty">עדיין אין עובדים. הוסף בלשונית "עובדים".</div>';
-  emps.sort((a,b)=>(!!availDoc(a.id,ws))-(!!availDoc(b.id,ws))||a.name.localeCompare(b.name,'he'));
-  emps.forEach(e=>{
-    const ok=!!availDoc(e.id,ws);
-    h+='<div class="card"><div class="row between"><div class="grow" data-act="availView" data-id="'+e.id+'" style="cursor:pointer"><b>'+esc(e.name)+'</b><div class="muted">'+(ok?'הוגשה — לחץ לצפייה':'לא הוגשה')+'</div></div>'+
-       (ok?'<span class="chip ok">✓</span>':'<button class="btn sec sm" data-act="remind" data-id="'+e.id+'">תזכורת בוואטסאפ</button>')+'</div></div>';
-  });
+  const days=[0,1,2,3,4,5,6].map(i=>addDays(ws,i));
+  h+='<div class="pills"><button class="pill'+(!S.avDay?' on':'')+'" data-act="avDay" data-date="">כל<b>השבוע</b></button>'+
+     days.map((d,i)=>{const n=emps.filter(e=>availState(e.id,d).s==='on').length;return '<button class="pill'+(S.avDay===d?' on':'')+'" data-act="avDay" data-date="'+d+'">'+DOW[i]+'<b>'+parse(d).getDate()+'</b>'+n+' זמינים</button>'}).join('')+'</div>';
+  const remindBtn=e=>'<button class="btn sec sm" data-act="remind" data-id="'+e.id+'">תזכורת בוואטסאפ</button>';
+  const card=(e,sub,right)=>'<div class="card" style="padding:12px"><div class="row between"><div class="grow" data-act="availView" data-id="'+e.id+'" style="cursor:pointer"><b>'+esc(e.name)+'</b><div class="muted">'+sub+'</div></div>'+(right||'')+'</div></div>';
+  const submitted=emps.filter(e=>availDoc(e.id,ws)),notSub=emps.filter(e=>!availDoc(e.id,ws));
+  if(!S.avDay){
+    const cnt=e=>days.filter(d=>availState(e.id,d).s==='on').length;
+    const avail=submitted.filter(e=>cnt(e)>0),allOff=submitted.filter(e=>cnt(e)===0);
+    h+='<div class="muted">הגישו '+submitted.length+' מתוך '+emps.length+'</div>';
+    h+=availSection('לא הגישו זמינות','warn',notSub.map(e=>card(e,'עדיין לא הגיש/ה',remindBtn(e))));
+    h+=availSection('הגישו — זמינים','ok',avail.map(e=>card(e,'זמין/ה '+cnt(e)+' מתוך 7 ימים · לחץ לפירוט','<span class="chip ok">✓</span>')));
+    if(allOff.length)h+=availSection('הגישו — לא זמינים כל השבוע','grey',allOff.map(e=>card(e,'סימן/ה שלא זמין/ה בשום יום','')));
+  }else{
+    const d=S.avDay,on=[],off=[],none=[];
+    emps.forEach(e=>{const a=availState(e.id,d);(a.s==='on'?on:a.s==='off'?off:none).push([e,a])});
+    h+='<div class="muted" style="margin-bottom:4px">'+fmtDay(d)+'</div>';
+    h+=availSection('זמינים','ok',on.map(([e,a])=>card(e,esc(describeAvail(a))+(a.note?' · '+esc(a.note):''),'')));
+    h+=availSection('סימנו לא זמין','grey',off.map(([e,a])=>card(e,'לא זמין/ה'+(a.note?' · '+esc(a.note):''),'')));
+    h+=availSection('לא הגישו','warn',none.map(([e])=>card(e,availDoc(e.id,ws)?'לא סומן ליום הזה':'עדיין לא הגיש/ה זמינות',availDoc(e.id,ws)?'':remindBtn(e))));
+  }
   return h;
 }
 /* ---- מנהל: עובדים ---- */
-function viewEmps(){
+function empMatches(e){
+  const q=(S.empQ||'').trim().toLowerCase();
+  if(S.empRole&&!(e.roles||[]).includes(S.empRole))return false;
+  if(S.empStatus==='active'&&e.active===false)return false;
+  if(S.empStatus==='archived'&&e.active!==false)return false;
+  if(S.empStatus==='nophone'&&phoneOf(e.id))return false;
+  if(S.empStatus==='mgr'&&!e.isManager)return false;
+  if(!q)return true;
+  const digits=q.replace(/\D/g,''),ph=normPhone(phoneOf(e.id));
+  return e.name.toLowerCase().includes(q)||(digits.length>=2&&(ph.includes(digits)||ph.slice(1).includes(digits)))||(e.roles||[]).some(r=>roleName(r).toLowerCase().includes(q));
+}
+function empListHtml(){
   const all=vals('employees').sort((a,b)=>(a.active===false)-(b.active===false)||a.name.localeCompare(b.name,'he'));
-  let h='<div class="row between"><h2>עובדים</h2><button class="btn sm" data-act="empNew">+ עובד</button></div>';
-  all.forEach(e=>{
+  const list=all.filter(empMatches);
+  let h='<div class="muted" style="margin:0 2px 8px">מוצגים '+list.length+' מתוך '+all.length+'</div>';
+  if(!list.length)return h+'<div class="card empty">לא נמצאו עובדים מתאימים.</div>';
+  list.forEach(e=>{
     h+='<div class="card" style="'+(e.active===false?'opacity:.55':'')+'"><div class="row between" data-act="empEdit" data-id="'+e.id+'" style="cursor:pointer"><div class="grow"><b>'+esc(e.name)+'</b> '+(e.isManager?'<span class="chip">מנהל/ת</span>':'')+(e.active===false?' <span class="chip grey">בארכיון</span>':'')+
        '<div class="muted">'+(phoneOf(e.id)?esc(phoneOf(e.id)):'<span class="chip bad">חסר טלפון — לא יוכל להיכנס</span>')+'</div><div class="muted">'+((e.roles||[]).map(roleName).join(' · ')||'אין תפקידים מוגדרים')+'</div></div><span class="muted">עריכה ›</span></div></div>';
   });
   return h;
+}
+function viewEmps(){
+  return '<div class="row between"><h2>עובדים</h2><button class="btn sm" data-act="empNew">+ עובד</button></div>'+
+   '<input type="text" id="emp-q" data-inp="empQ" placeholder="🔍 חיפוש לפי שם, טלפון או תפקיד" value="'+esc(S.empQ)+'" autocomplete="off" style="margin-bottom:8px">'+
+   '<div class="two" style="margin-bottom:10px"><select data-chg="empRole"><option value="">כל התפקידים</option>'+sortedRoles().map(r=>'<option value="'+r.id+'"'+(S.empRole===r.id?' selected':'')+'>'+esc(r.name)+'</option>').join('')+'</select>'+
+   '<select data-chg="empStatus">'+[['all','כל העובדים'],['active','פעילים'],['archived','בארכיון'],['nophone','ללא טלפון'],['mgr','מנהלים']].map(([k,l])=>'<option value="'+k+'"'+(S.empStatus===k?' selected':'')+'>'+l+'</option>').join('')+'</select></div>'+
+   '<div id="emp-list">'+empListHtml()+'</div>';
 }
 /* ---- מנהל: הגדרות ---- */
 function viewSettings(){
@@ -574,6 +612,7 @@ const A={
   },
   switchView(){S.view=S.view==='manager'?'worker':'manager';S.tab=null;render()},
   tab(d){S.tab=d.t;render();window.scrollTo(0,0)},
+  avDay(d){S.avDay=d.date||null;render()},
   wk(d){
     S[d.key]=addDays(S[d.key],+d.d);
     if(d.key==='bWeek')S.bDay=null;
@@ -753,6 +792,7 @@ async function importCsv(text){
 }
 const C={ /* שינוי ערך בשדה */
   impFile(el){const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{importCsv(String(r.result));el.value=''};r.readAsText(f,'utf-8')},
+  empRole(el){S.empRole=el.value;if(document.activeElement)document.activeElement.blur();render()},empStatus(el){S.empStatus=el.value;if(document.activeElement)document.activeElement.blur();render()},
   avFrom(el){S.draft[el.dataset.date].from=el.value},
   avTo(el){S.draft[el.dataset.date].to=el.value},
   hrs(el){
@@ -773,7 +813,9 @@ document.addEventListener('change',ev=>{
   const f=C[el.dataset.chg];if(f)f(el);
 });
 document.addEventListener('input',ev=>{
-  const el=ev.target;if(el.dataset&&el.dataset.inp==='avNote')S.draft[el.dataset.date].note=el.value;
+  const el=ev.target;if(!el.dataset)return;
+  if(el.dataset.inp==='avNote')S.draft[el.dataset.date].note=el.value;
+  if(el.dataset.inp==='empQ'){S.empQ=el.value;const l=$('#emp-list');if(l)l.innerHTML=empListHtml()}
 });
 document.addEventListener('keydown',ev=>{
   if(ev.key==='Enter'&&(ev.target.id==='lg-phone'||ev.target.id==='lg-pin'))A.login();

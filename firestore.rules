@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function userDoc() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function isActive() { return signedIn() && exists(userDoc()) && get(userDoc()).data.active == true; }
+    function isMgr() { return isActive() && get(userDoc()).data.isManager == true; }
+    function myEmp() { return get(userDoc()).data.empId; }
+
+    // קיום מסמך זה אומר שההגדרה הראשונית כבר בוצעה
+    match /meta/bootstrap {
+      allow read: if true;
+      allow create: if isMgr();
+    }
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isMgr());
+      allow create: if isMgr() || (signedIn() && request.auth.uid == uid
+        && request.resource.data.isManager == true && request.resource.data.active == true
+        && !exists(/databases/$(database)/documents/meta/bootstrap));
+      allow update, delete: if isMgr();
+    }
+    match /secrets/{id} {
+      allow read, write: if isMgr();
+      // עובד רשאי רק למחוק את הקוד השמור שלו כשהוא מחליף אותו בעצמו
+      allow update: if isActive() && id == myEmp()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pin','selfSet'])
+        && request.resource.data.pin == '';
+    }
+    match /employees/{id} { allow read: if isActive(); allow write: if isMgr(); }
+    match /roles/{id}     { allow read: if isActive(); allow write: if isMgr(); }
+    match /days/{id}      { allow read: if isActive(); allow write: if isMgr(); }
+    match /weeks/{id}     { allow read: if isActive(); allow write: if isMgr(); }
+    match /settings/{id}  { allow read: if isActive(); allow write: if isMgr(); }
+    match /shifts/{id}    { allow read: if isActive(); allow write: if isMgr(); }
+    match /availability/{id} {
+      allow read: if isMgr() || (isActive() && resource.data.empId == myEmp());
+      allow create, update: if isActive() && request.resource.data.empId == myEmp()
+        && id == request.resource.data.weekStart + '_' + myEmp();
+      allow delete: if isMgr();
+    }
+  }
+}
