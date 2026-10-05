@@ -79,9 +79,9 @@ label.f{display:block;margin:10px 0 4px;font-size:13px;font-weight:700;color:var
 .nav-btn{border:0;background:#fff;box-shadow:var(--shadow);border-radius:50%;width:40px;height:40px;font-size:18px;color:var(--primary);font-weight:800}
 .pills{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none}
 .pills::-webkit-scrollbar{display:none}
-.pill{flex:0 0 auto;min-width:58px;border:0;border-radius:14px;background:#fff;box-shadow:var(--shadow);padding:7px 8px;text-align:center;color:var(--muted);font-size:12px}
+.pill{flex:1 1 0;min-width:74px;border:0;border-radius:14px;background:#fff;box-shadow:var(--shadow);padding:7px 8px;text-align:center;color:var(--muted);font-size:12px}
 .pill b{display:block;font-size:17px;color:var(--text)}
-.pill .pc{display:block;font-size:11px;white-space:nowrap;line-height:1.5}.pill{min-width:66px}
+.pill .pc{display:block;font-size:12px;white-space:nowrap;line-height:1.55}.pill .ph{display:block;font-size:11px;color:var(--muted);direction:ltr;margin-top:2px}.pill.on .ph{color:#ccc}.pill{padding:10px 8px;border-radius:16px}.pill b{font-size:20px}
 .pill.on{background:#0e0e0e;color:#fff} .pill.on b{color:#fff}
 .pill.today b::after{content:"";display:block;width:6px;height:6px;border-radius:50%;background:var(--sun);margin:2px auto 0}
 .shift{display:flex;gap:10px;align-items:center;padding:11px 12px;border-radius:14px;background:#fff;box-shadow:var(--shadow);margin-bottom:8px;border-right:5px solid var(--aqua);cursor:pointer}
@@ -123,6 +123,7 @@ main.wide{max-width:1100px}
 .board{display:block}
 .tray{background:#fff;border-radius:16px;box-shadow:var(--shadow);padding:8px;margin-bottom:12px;position:sticky;top:0;z-index:12}
 .tray-f{display:flex;gap:6px;margin-bottom:6px}.tray-f select{flex:1;min-width:0;padding:6px 8px;font-size:13px}
+.tray-t{font-size:12px;font-weight:800;color:var(--muted);margin:6px 2px 4px}
 .tray-l{display:flex;gap:6px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:thin}
 .pickbar{background:#fff3dc;color:#7a5200;border-radius:10px;padding:6px 10px;font-size:13px;font-weight:700;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .ec{flex:0 0 auto;min-width:108px;max-width:150px;border-radius:12px;border:2px solid var(--line);background:#fff;padding:5px 9px;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
@@ -168,7 +169,7 @@ main.wide{max-width:1100px}
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='6.1';
+const APP_VERSION='6.2';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -429,7 +430,7 @@ function mergeIv(l){l=l.filter(x=>x[1]>x[0]).sort((a,b)=>a[0]-b[0]);const o=[];l
 function gapsOf(list,win){let cur=win[0];const g=[];mergeIv(list).forEach(x=>{if(x[0]>cur)g.push([cur,Math.min(x[0],win[1])]);cur=Math.max(cur,x[1])});if(cur<win[1])g.push([cur,win[1]]);return g.filter(x=>x[1]>x[0])}
 const skipOf=date=>((D('weeks')[weekStart(date)]||{}).skip||{})[date]||[];
 function laneInfo(date,roleId,extra){const win=dayWin(date),sh=shiftsOn(date).filter(s=>s.roleId===roleId);return {shifts:sh,gaps:gapsOf(sh.map(ivOf).concat(extra||[]),win),win}}
-function reqRoles(date){const sk=skipOf(date),sh=shiftsOn(date);return sortedRoles().filter(r=>!sk.includes(r.id)||sh.some(s=>s.roleId===r.id))}
+function reqRoles(date){const sk=skipOf(date);return sortedRoles().filter(r=>!sk.includes(r.id))}
 function dayStatus(date){
   if(hoursFor(date).closed)return {cls:'grey',full:0,miss:0};
   let full=0,miss=0;reqRoles(date).forEach(r=>{const g=laneInfo(date,r.id).gaps.length;if(g)miss+=g;else full++});
@@ -467,10 +468,11 @@ function boardHtml(date,hr){
   h+='<aside class="tray"><div class="tray-f"><select data-chg="trayF"><option value="avail"'+((S.trayF||'avail')==='avail'?' selected':'')+'>זמינים ליום הזה</option><option value="sub"'+(S.trayF==='sub'?' selected':'')+'>כולל מי שלא הגישו</option><option value="all"'+(S.trayF==='all'?' selected':'')+'>כל העובדים</option></select>'+
     '<select data-chg="trayRole"><option value="">כל התפקידים</option>'+sortedRoles().map(r=>'<option value="'+r.id+'"'+(S.trayRole===r.id?' selected':'')+'>'+esc(r.name)+'</option>').join('')+'</select></div>'+
     (pick?'<div class="pickbar"><span>נבחר/ה: '+esc(empName(pick))+' — הקש על תפקיד לשיבוץ</span><button class="btn ghost sm" data-act="pickEmp" data-id="'+pick+'">ביטול</button></div>':'<div class="muted" style="font-size:12px;margin-bottom:4px">גרור עובד לתפקיד, או הקש עליו ואז על התפקיד</div>')+
-    '<div class="tray-l" id="tray">'+(tl.length?tl.map(({e,st})=>{
+    '<div class="tray-t">פנויים ('+tl.filter(x=>!allShifts.some(z=>z.empId===x.e.id)).length+')</div><div class="tray-l" id="tray">'+(tl.length?tl.filter(x=>!allShifts.some(z=>z.empId===x.e.id)).map(({e,st})=>{
       const a=availState(e.id,date),mine=allShifts.filter(s=>s.empId===e.id);
       const at=st==='full'?'כל היום':st==='part'?describeAvail(a):st==='none'?'לא הגיש/ה':'לא זמין/ה';
-      return '<div class="ec st-'+st+(mine.length?' asg':'')+(pick===e.id?' picked':'')+'" data-drag="'+e.id+'" data-act="pickEmp" data-id="'+e.id+'"><b>'+esc(e.name)+'</b><small>'+esc(at)+'</small>'+(mine.length?'<small class="as">'+esc(mine.map(exHours).join(', '))+'</small>':'')+'</div>'}).join(''):'<div class="muted">אין עובדים בסינון הזה</div>')+'</div></aside>';
+      return '<div class="ec st-'+st+(mine.length?' asg':'')+(pick===e.id?' picked':'')+'" data-drag="'+e.id+'" data-act="pickEmp" data-id="'+e.id+'"><b>'+esc(e.name)+'</b><small>'+esc(at)+'</small>'+(mine.length?'<small class="as">'+esc(mine.map(exHours).join(', '))+'</small>':'')+'</div>'}).join(''):'<div class="muted">אין עובדים בסינון הזה</div>')+'</div>'+
+    (()=>{const stOf=e=>{const a=availState(e.id,date);return a.s==='on'?((a.from==='open'&&a.to==='close')?'full':'part'):a.s};const as=[...new Set(allShifts.map(z=>z.empId))].map(id=>emp(id)).filter(Boolean).map(e=>({e,st:stOf(e)}));return '<div class="tray-t">משובצים היום ('+as.length+')</div><div class="tray-l" id="tray2">'+(as.length?as.map(({e,st})=>{const mine=allShifts.filter(z=>z.empId===e.id);return '<div class="ec asg st-'+st+(pick===e.id?' picked':'')+'" data-drag="'+e.id+'" data-act="pickEmp" data-id="'+e.id+'"><b>'+esc(e.name)+'</b>'+mine.map(z=>'<small class="as">'+esc(roleName(z.roleId))+' '+esc(exHours(z))+'</small>').join('')+'</div>'}).join(''):'<div class="muted">אף אחד עדיין</div>')+'</div>'})()+'</aside>';
   h+='<div>';
   /* חוסרים */
   if(!allShifts.length&&rr.length)h+='<div class="miss"><b>היום עוד ריק.</b> גרור עובדים לתפקידים, או לחץ על "✨ פזר יום".</div>';
@@ -522,7 +524,7 @@ function autoFill(dates){
     const win=dayWin(date),sk=skipOf(date);
     const day=()=>work.filter(s=>s.date===date);
     const av={};pool.forEach(e=>{av[e.id]=availWin(e.id,date)});
-    const roles=sortedRoles().filter(r=>!sk.includes(r.id)||day().some(s=>s.roleId===r.id));
+    const roles=sortedRoles().filter(r=>!sk.includes(r.id));
     const cnt=r=>pool.filter(e=>av[e.id]&&e.roles.includes(r.id)).length;
     roles.sort((a,b)=>cnt(a)-cnt(b));
     roles.forEach(r=>{
@@ -572,7 +574,7 @@ function viewMyAvail(){
      '<button class="btn sec sm" data-act="avCopy">העתק מהשבוע הקודם</button></div>';
   for(let i=0;i<7;i++){
     const date=addDays(S.avWeek,i),d=S.draft[date],hr=hoursFor(date);
-    if(hr.closed){h+='<div class="card" style="opacity:.65"><div class="row between"><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="chip">'+(hr.label?esc(hr.label):'סגור')+'</span></div><div class="muted" style="margin-top:6px">'+(hr.label?'יום חג — ':'')+'המקום סגור ביום הזה — אין משמרות.</div></div>';continue}
+    if(hr.closed)continue;
     h+='<div class="card'+(S.missing.includes(date)?' miss':'')+'"><div class="row between"><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="muted">'+hr.open+'–'+hr.close+'</span></div>'+
     '<div class="seg" style="margin-top:8px">'+
       '<button class="off'+(d&&d.t==='off'?' on':'')+'" data-act="avType" data-date="'+date+'" data-t="off">לא זמין</button>'+
@@ -616,7 +618,7 @@ function viewBuild(){
   h+='<div class="row between wrap" style="margin-bottom:10px"><span class="chip '+(pub?'ok':'warn')+'">'+(pub?'פורסם — העובדים רואים את הסידור':'טיוטה — העובדים עדיין לא רואים')+'</span>'+
      '<div class="row"><button class="btn sec sm" data-act="exportWeek">שלח כטקסט</button><button class="btn sm '+(pub?'ghost':'ok')+'" data-act="publish">'+(pub?'בטל פרסום':'פרסם באפליקציה')+'</button></div></div><div class="muted" style="margin:-4px 0 10px">פרסום באפליקציה — העובדים רואים את המשמרות שלהם בתוך האפליקציה. שליחה כטקסט — העתקה/וואטסאפ בלבד, לא משנה מה העובדים רואים.</div>';
   h+='<div class="pills">';
-  for(let i=0;i<7;i++){const d=addDays(ws,i);if(!shown(d))continue;h+='<button class="pill'+(d===date?' on':'')+(d===t?' today':'')+'" data-act="day" data-date="'+d+'">'+DOW[i]+'<b>'+parse(d).getDate()+'</b>'+(()=>{const st=dayStatus(d);if(hoursFor(d).closed)return '<span class="pc">סגור (חג)</span>';return (st.full?'<span class="pc"><i class="dot ok"></i>'+st.full+' מלא</span>':'')+(st.miss?'<span class="pc"><i class="dot bad"></i>'+st.miss+' חסר</span>':'')})()+'</button>'}
+  for(let i=0;i<7;i++){const d=addDays(ws,i);if(!shown(d))continue;h+='<button class="pill'+(d===date?' on':'')+(d===t?' today':'')+'" data-act="day" data-date="'+d+'">'+DOW[i]+'<b>'+parse(d).getDate()+'</b>'+(()=>{const st=dayStatus(d);if(hoursFor(d).closed)return '<span class="pc">סגור (חג)</span>';const hh=hoursFor(d);return '<span class="ph">'+hh.open+'–'+hh.close+'</span>'+(st.full?'<span class="pc"><i class="dot ok"></i>'+st.full+' מלא</span>':'')+(st.miss?'<span class="pc"><i class="dot bad"></i>'+st.miss+' חסר</span>':'')+'<span class="pc" style="color:var(--muted)">'+shiftsOn(d).length+' משמרות</span>'})()+'</button>'}
   const board=(S.bMode||'board')==='board';
   h+='</div><div class="card"><div class="row between wrap"><div><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="muted">פתיחה '+hr.open+' · סגירה '+hr.close+(hr.custom?' (מותאם)':'')+'</span>'+(hr.label?' <span class="chip">'+esc(hr.label)+'</span>':'')+(hr.closed?' <span class="chip warn">המקום סגור ביום הזה</span>':'')+'</div>'+
      '<div class="seg2"><button class="'+(board?'on':'')+'" data-act="bMode" data-m="board">לוח</button><button class="'+(board?'':'on')+'" data-act="bMode" data-m="list">רשימה</button></div></div>'+
@@ -644,9 +646,10 @@ function viewAvailMgr(){
   if(S.avDay&&weekStart(S.avDay)!==ws)S.avDay=null;
   let h='<h2>זמינות עובדים</h2>'+weekBar('avWeek',ws);
   if(!emps.length)return h+'<div class="card empty">עדיין אין עובדים. הוסף בלשונית "עובדים".</div>';
-  const days=[0,1,2,3,4,5,6].map(i=>addDays(ws,i));
+  const days=[0,1,2,3,4,5,6].map(i=>addDays(ws,i)).filter(d=>!hoursFor(d).closed);
+  if(S.avDay&&!days.includes(S.avDay))S.avDay=null;
   h+='<div class="pills"><button class="pill'+(!S.avDay?' on':'')+'" data-act="avDay" data-date="">כל<b>השבוע</b></button>'+
-     days.map((d,i)=>{const n=emps.filter(e=>availState(e.id,d).s==='on').length;return '<button class="pill'+(S.avDay===d?' on':'')+'" data-act="avDay" data-date="'+d+'">'+DOW[i]+'<b>'+parse(d).getDate()+'</b>'+n+' זמינים</button>'}).join('')+'</div>';
+     days.map(d=>{const i=dowOf(d),n=emps.filter(e=>availState(e.id,d).s==='on').length;return '<button class="pill'+(S.avDay===d?' on':'')+'" data-act="avDay" data-date="'+d+'">'+DOW[i]+'<b>'+parse(d).getDate()+'</b>'+n+' זמינים</button>'}).join('')+'</div>';
   const remindBtn=e=>'<button class="btn sec sm" data-act="remind" data-id="'+e.id+'">תזכורת בוואטסאפ</button>';
   const card=(e,sub,right)=>'<div class="card" style="padding:12px"><div class="row between"><div class="grow" data-act="availView" data-id="'+e.id+'" style="cursor:pointer"><b>'+esc(e.name)+'</b><div class="muted">'+sub+'</div></div>'+(right||'')+'</div></div>';
   const submitted=emps.filter(e=>availDoc(e.id,ws)),notSub=emps.filter(e=>!availDoc(e.id,ws));
@@ -655,7 +658,7 @@ function viewAvailMgr(){
     const avail=submitted.filter(e=>cnt(e)>0),allOff=submitted.filter(e=>cnt(e)===0);
     h+='<div class="muted">הגישו '+submitted.length+' מתוך '+emps.length+'</div>';
     h+=availSection('לא הגישו זמינות','warn',notSub.map(e=>card(e,'עדיין לא הגיש/ה',remindBtn(e))));
-    h+=availSection('הגישו — זמינים','ok',avail.map(e=>card(e,'זמין/ה '+cnt(e)+' מתוך 7 ימים · לחץ לפירוט','<span class="chip ok">✓</span>')));
+    h+=availSection('הגישו — זמינים','ok',avail.map(e=>card(e,'זמין/ה '+cnt(e)+' מתוך '+days.length+' ימים · לחץ לפירוט','<span class="chip ok">✓</span>')));
     if(allOff.length)h+=availSection('הגישו — לא זמינים כל השבוע','grey',allOff.map(e=>card(e,'סימן/ה שלא זמין/ה בשום יום','')));
   }else{
     const d=S.avDay,on=[],off=[],none=[];
@@ -875,7 +878,7 @@ const A={
   availView(d){
     const e=emp(d.id);let h='<h2>'+esc(e.name)+' · שבוע '+weekLabel(S.avWeek)+'</h2>';
     const doc=availDoc(d.id,S.avWeek);
-    for(let i=0;i<7;i++){const date=addDays(S.avWeek,i),a=availState(d.id,date);
+    for(let i=0;i<7;i++){const date=addDays(S.avWeek,i),a=availState(d.id,date);if(hoursFor(date).closed)continue;
       const note=doc&&doc.days&&doc.days[date]&&doc.days[date].note;
       h+='<div class="row" style="padding:7px 0;border-bottom:1px solid var(--line)"><b style="min-width:110px">'+DOW[i]+' '+fmtDM(date)+'</b><span class="grow">'+describeAvail(a)+(note?'<div class="muted">'+esc(note)+'</div>':'')+'</span></div>'}
     openModal(h+'<div style="height:12px"></div><button class="btn ghost block" data-act="closeModal">סגור</button>');
@@ -889,7 +892,11 @@ const A={
     shiftModal(null,S.bDay,{roleId:d.role,from:g?tokS(g[0],S.bDay):'open',to:g?tokE(g[1],S.bDay):'close'});
   },
   shiftX(d){const s=D('shifts')[d.id];if(!s)return;if(confirm('להסיר את '+empName(s.empId)+' מ'+roleName(s.roleId)+'?'))Store.del('shifts',d.id)},
-  laneSkip(d){if(laneInfo(S.bDay,d.role).shifts.length&&!confirm('יש משמרות בתפקיד הזה. להסתיר אותו בכל זאת?'))return;setSkip(S.bDay,d.role,true)},
+  laneSkip(d){
+    const sh=laneInfo(S.bDay,d.role).shifts;
+    if(sh.length&&!confirm('התפקיד "'+roleName(d.role)+'" לא נדרש היום. '+sh.map(x=>empName(x.empId)).join(', ')+' יוסרו ממנו ויחזרו לרשימת העובדים. להמשיך?'))return;
+    sh.forEach(x=>Store.del('shifts',x.id));setSkip(S.bDay,d.role,true);
+  },
   laneUnskip(d){setSkip(S.bDay,d.role,false)},
   goLane(d){const el=document.getElementById('lane-'+d.role);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.add('over');setTimeout(()=>el.classList.remove('over'),1200)}},
   autoDay(){
@@ -921,7 +928,7 @@ const A={
     if(toMin(resolve(from,s.date))>=toMin(resolve(to,s.date)))return toast('שעת הסיום חייבת להיות אחרי ההתחלה');
     const w=warningsOf(s);
     if(w.length&&!confirm('יש אזהרות:\n• '+w.map(x=>x.t).join('\n• ')+'\n\nלשמור בכל זאת?'))return;
-    Store.set('shifts',s.id,{date:s.date,empId,roleId,from,to});closeModal();
+    setSkip(s.date,roleId,false);Store.set('shifts',s.id,{date:s.date,empId,roleId,from,to});closeModal();
   },
   shiftDel(){if(!confirm('למחוק את המשמרת?'))return;Store.del('shifts',S.sm.id);closeModal()},
   publish(){
@@ -1132,9 +1139,9 @@ function render(){
     if(!me()){app.innerHTML=viewLogin();return}
   }
   if(!me()){A.logout();return}
-  const tr0=$('#tray'),sl=tr0?tr0.scrollLeft:0,st0=tr0?tr0.scrollTop:0;
+  const tr0=$('#tray'),sl=tr0?tr0.scrollLeft:0,st0=tr0?tr0.scrollTop:0,tb0=$('.tray'),tbs=tb0?tb0.scrollTop:0;
   app.innerHTML=viewShell();
-  const tr1=$('#tray');if(tr1){tr1.scrollLeft=sl;tr1.scrollTop=st0}
+  const tr1=$('#tray');if(tr1){tr1.scrollLeft=sl;tr1.scrollTop=st0}const tb1=$('.tray');if(tb1)tb1.scrollTop=tbs;
 }
 
 /* ---- גרירה (עכבר + לחיצה ארוכה במגע) ---- */
