@@ -81,6 +81,7 @@ label.f{display:block;margin:10px 0 4px;font-size:13px;font-weight:700;color:var
 .pills::-webkit-scrollbar{display:none}
 .pill{flex:0 0 auto;min-width:58px;border:0;border-radius:14px;background:#fff;box-shadow:var(--shadow);padding:7px 8px;text-align:center;color:var(--muted);font-size:12px}
 .pill b{display:block;font-size:17px;color:var(--text)}
+.pill .pc{display:block;font-size:11px;white-space:nowrap;line-height:1.5}.pill{min-width:66px}
 .pill.on{background:#0e0e0e;color:#fff} .pill.on b{color:#fff}
 .pill.today b::after{content:"";display:block;width:6px;height:6px;border-radius:50%;background:var(--sun);margin:2px auto 0}
 .shift{display:flex;gap:10px;align-items:center;padding:11px 12px;border-radius:14px;background:#fff;box-shadow:var(--shadow);margin-bottom:8px;border-right:5px solid var(--aqua);cursor:pointer}
@@ -167,7 +168,7 @@ main.wide{max-width:1100px}
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='6.0';
+const APP_VERSION='6.1';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -288,12 +289,17 @@ const authMsg=e=>{const c=(e&&e.code)||'';
 /* ================= לוגיקה עסקית ================= */
 const DEF_HOURS={0:['09:30','20:00'],1:['09:30','20:00'],2:['09:30','20:00'],3:['09:30','20:00'],4:['09:30','20:00'],5:['09:30','14:00'],6:['18:30','23:00']};
 function hoursFor(date){
-  const d=D('days')[date];if(d)return {open:d.open,close:d.close,custom:true,closed:false};
   const s=D('settings').hours;const w=dowOf(date);
   const m=s&&s.map&&s.map[w];
   const x=m||{open:DEF_HOURS[w][0],close:DEF_HOURS[w][1]};
-  return {open:x.open,close:x.close,custom:false,closed:!!(m&&m.closed)};
+  const d=D('days')[date];
+  if(d)return {open:d.open||x.open,close:d.close||x.close,custom:true,closed:!!d.closed,label:d.label||''};
+  return {open:x.open,close:x.close,custom:false,closed:!!(m&&m.closed),label:''};
 }
+/* אפשרויות שעה — רק בתוך שעות הפעילות של היום */
+function fromOptsFor(date){const w=dayWin(date);return ['open'].concat(timeOpts(w[0]+15,w[1]-15))}
+function toOptsFor(date){const w=dayWin(date);return timeOpts(w[0]+15,w[1]-15).concat(['close'])}
+function normTok(v,date,isEnd){if(v==='open'||v==='close')return v;const h=hoursFor(date);if(!isEnd&&v===h.open)return 'open';if(isEnd&&v===h.close)return 'close';return v}
 const resolve=(tok,date)=>tok==='open'?hoursFor(date).open:tok==='close'?hoursFor(date).close:tok;
 const emp=id=>D('employees')[id];
 const role=id=>D('roles')[id];
@@ -425,9 +431,9 @@ const skipOf=date=>((D('weeks')[weekStart(date)]||{}).skip||{})[date]||[];
 function laneInfo(date,roleId,extra){const win=dayWin(date),sh=shiftsOn(date).filter(s=>s.roleId===roleId);return {shifts:sh,gaps:gapsOf(sh.map(ivOf).concat(extra||[]),win),win}}
 function reqRoles(date){const sk=skipOf(date),sh=shiftsOn(date);return sortedRoles().filter(r=>!sk.includes(r.id)||sh.some(s=>s.roleId===r.id))}
 function dayStatus(date){
-  if(hoursFor(date).closed)return 'grey';
-  const rr=reqRoles(date);if(!shiftsOn(date).length)return 'grey';
-  return rr.every(r=>!laneInfo(date,r.id).gaps.length)?'ok':'bad';
+  if(hoursFor(date).closed)return {cls:'grey',full:0,miss:0};
+  let full=0,miss=0;reqRoles(date).forEach(r=>{const g=laneInfo(date,r.id).gaps.length;if(g)miss+=g;else full++});
+  return {cls:miss?'bad':full?'ok':'grey',full,miss};
 }
 const gapTxt=g=>'\u2066'+mmT(g[0])+'–'+mmT(g[1])+'\u2069';
 function availWin(empId,date){const a=availState(empId,date),w=dayWin(date);if(a.s!=='on')return null;const f=Math.max(w[0],toMin(resolve(a.from,date))),t=Math.min(w[1],toMin(resolve(a.to,date)));return t>f?[f,t]:null}
@@ -566,15 +572,15 @@ function viewMyAvail(){
      '<button class="btn sec sm" data-act="avCopy">העתק מהשבוע הקודם</button></div>';
   for(let i=0;i<7;i++){
     const date=addDays(S.avWeek,i),d=S.draft[date],hr=hoursFor(date);
-    if(hr.closed){h+='<div class="card" style="opacity:.65"><div class="row between"><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="chip">סגור</span></div><div class="muted" style="margin-top:6px">המקום סגור ביום הזה — אין משמרות.</div></div>';continue}
+    if(hr.closed){h+='<div class="card" style="opacity:.65"><div class="row between"><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="chip">'+(hr.label?esc(hr.label):'סגור')+'</span></div><div class="muted" style="margin-top:6px">'+(hr.label?'יום חג — ':'')+'המקום סגור ביום הזה — אין משמרות.</div></div>';continue}
     h+='<div class="card'+(S.missing.includes(date)?' miss':'')+'"><div class="row between"><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="muted">'+hr.open+'–'+hr.close+'</span></div>'+
     '<div class="seg" style="margin-top:8px">'+
       '<button class="off'+(d&&d.t==='off'?' on':'')+'" data-act="avType" data-date="'+date+'" data-t="off">לא זמין</button>'+
       '<button class="all'+(d&&d.t==='all'?' on':'')+'" data-act="avType" data-date="'+date+'" data-t="all">כל היום</button>'+
       '<button class="'+(d&&d.t==='range'?'on':'')+'" data-act="avType" data-date="'+date+'" data-t="range">שעות</button></div>';
     if(d&&d.t==='range'){
-      h+='<div class="two" style="margin-top:8px"><div><label class="f">מ-</label><select data-chg="avFrom" data-date="'+date+'">'+optsHtml(FROM_OPTS,d.from,fmtT)+'</select></div>'+
-         '<div><label class="f">עד</label><select data-chg="avTo" data-date="'+date+'">'+optsHtml(TO_OPTS,d.to,fmtT)+'</select></div></div>';
+      h+='<div class="two" style="margin-top:8px"><div><label class="f">מ-</label><select data-chg="avFrom" data-date="'+date+'">'+optsHtml(fromOptsFor(date),normTok(d.from,date,false),fmtT)+'</select></div>'+
+         '<div><label class="f">עד</label><select data-chg="avTo" data-date="'+date+'">'+optsHtml(toOptsFor(date),normTok(d.to,date,true),fmtT)+'</select></div></div>';
     }
     if(d)h+='<input type="text" style="margin-top:8px" placeholder="הערה (לא חובה)" value="'+esc(d.note||'')+'" data-inp="avNote" data-date="'+date+'">';
     h+='</div>';
@@ -610,9 +616,9 @@ function viewBuild(){
   h+='<div class="row between wrap" style="margin-bottom:10px"><span class="chip '+(pub?'ok':'warn')+'">'+(pub?'פורסם — העובדים רואים את הסידור':'טיוטה — העובדים עדיין לא רואים')+'</span>'+
      '<div class="row"><button class="btn sec sm" data-act="exportWeek">שלח כטקסט</button><button class="btn sm '+(pub?'ghost':'ok')+'" data-act="publish">'+(pub?'בטל פרסום':'פרסם באפליקציה')+'</button></div></div><div class="muted" style="margin:-4px 0 10px">פרסום באפליקציה — העובדים רואים את המשמרות שלהם בתוך האפליקציה. שליחה כטקסט — העתקה/וואטסאפ בלבד, לא משנה מה העובדים רואים.</div>';
   h+='<div class="pills">';
-  for(let i=0;i<7;i++){const d=addDays(ws,i);if(!shown(d))continue;h+='<button class="pill'+(d===date?' on':'')+(d===t?' today':'')+'" data-act="day" data-date="'+d+'">'+DOW[i]+'<b>'+parse(d).getDate()+'</b><span class="dot '+dayStatus(d)+'"></span>'+shiftsOn(d).length+' משמרות</button>'}
+  for(let i=0;i<7;i++){const d=addDays(ws,i);if(!shown(d))continue;h+='<button class="pill'+(d===date?' on':'')+(d===t?' today':'')+'" data-act="day" data-date="'+d+'">'+DOW[i]+'<b>'+parse(d).getDate()+'</b>'+(()=>{const st=dayStatus(d);if(hoursFor(d).closed)return '<span class="pc">סגור (חג)</span>';return (st.full?'<span class="pc"><i class="dot ok"></i>'+st.full+' מלא</span>':'')+(st.miss?'<span class="pc"><i class="dot bad"></i>'+st.miss+' חסר</span>':'')})()+'</button>'}
   const board=(S.bMode||'board')==='board';
-  h+='</div><div class="card"><div class="row between wrap"><div><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="muted">פתיחה '+hr.open+' · סגירה '+hr.close+(hr.custom?' (מותאם)':'')+'</span>'+(hr.closed?' <span class="chip warn">המקום סגור ביום הזה</span>':'')+'</div>'+
+  h+='</div><div class="card"><div class="row between wrap"><div><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="muted">פתיחה '+hr.open+' · סגירה '+hr.close+(hr.custom?' (מותאם)':'')+'</span>'+(hr.label?' <span class="chip">'+esc(hr.label)+'</span>':'')+(hr.closed?' <span class="chip warn">המקום סגור ביום הזה</span>':'')+'</div>'+
      '<div class="seg2"><button class="'+(board?'on':'')+'" data-act="bMode" data-m="board">לוח</button><button class="'+(board?'':'on')+'" data-act="bMode" data-m="list">רשימה</button></div></div>'+
      '<div class="row wrap" style="margin-top:10px"><button class="btn sm" data-act="autoDay">✨ פזר יום</button><button class="btn sec sm" data-act="autoWeek">✨ פזר שבוע</button>'+((S.lastAuto&&S.lastAuto.some(id=>D('shifts')[id]))?'<button class="btn ghost sm" data-act="autoUndo">↩ בטל פיזור</button>':'')+
      '<button class="btn ghost sm" data-act="dayHours">שעות היום</button><button class="btn ghost sm" data-act="copyDay">העתק מיום…</button><button class="btn ghost sm" data-act="clearDay">🧹 נקה יום</button><button class="btn sec sm" data-act="exportDay">שלח יום כטקסט</button></div></div>';
@@ -691,6 +697,16 @@ function viewEmps(){
    '<select data-chg="empStatus">'+[['all','כל העובדים'],['active','פעילים'],['archived','בארכיון'],['nophone','ללא טלפון'],['mgr','מנהלים']].map(([k,l])=>'<option value="'+k+'"'+(S.empStatus===k?' selected':'')+'>'+l+'</option>').join('')+'</select></div>'+
    '<div id="emp-list">'+empListHtml()+'</div>';
 }
+
+function specialDaysCard(){
+  const from=addDays(todayIso(),-30);
+  const list=Object.keys(D('days')).filter(d=>d>=from).sort();
+  let h='<div class="card"><h3>ימים מיוחדים — חגים ושעות חריגות</h3><p class="muted">מסמנים תאריך ספציפי כיום חג (סגור) או משנים לו שעות פתיחה/סגירה. זה גובר על ברירת המחדל של אותו יום בשבוע.</p>';
+  h+=list.length?list.map(d=>{const x=hoursFor(d);return '<div class="row between" style="padding:7px 0;border-bottom:1px solid var(--line)"><div class="grow"><b>'+fmtDay(d)+'</b>'+(x.label?' · '+esc(x.label):'')+'<div class="muted">'+(x.closed?'סגור (חג)':x.open+'–'+x.close)+'</div></div><button class="btn ghost sm" data-act="sdEdit" data-date="'+d+'">עריכה</button><button class="btn danger sm" data-act="sdDel" data-date="'+d+'">מחק</button></div>'}).join(''):'<div class="muted">אין ימים מיוחדים.</div>';
+  h+='<div style="margin-top:12px"><label class="f">תאריך</label><input type="date" id="sd-date" value="'+nextWeek()+'"><label class="f">שם (לא חובה)</label><input type="text" id="sd-label" placeholder="למשל: ראש השנה"><div class="two" style="margin-top:6px"><div><label class="f">פתיחה</label><select id="sd-open">'+optsHtml(HM_OPTS,'09:30')+'</select></div><div><label class="f">סגירה</label><select id="sd-close">'+optsHtml(HM_OPTS,'20:00')+'</select></div></div>'+
+    '<div class="checks" style="margin-top:8px"><label><input type="checkbox" id="sd-closed" data-chg="sdClosed"> יום חג — המקום סגור</label></div><button class="btn block" style="margin-top:10px" data-act="sdSave">שמור יום מיוחד</button></div></div>';
+  return h;
+}
 /* ---- מנהל: הגדרות ---- */
 function viewSettings(){
   let h='<h2>הגדרות</h2><div class="card"><h3>תפקידים / מתקנים</h3>';
@@ -702,7 +718,7 @@ function viewSettings(){
     const cl=!!m.closed,dis=cl?' disabled':'';
     h+='<div class="row wrap" style="margin:6px 0"><span style="min-width:62px;font-weight:700">'+DOW[w]+'</span><select data-chg="hrs" data-w="'+w+'" data-k="open"'+dis+'>'+optsHtml(HM_OPTS,m.open)+'</select><span>–</span><select data-chg="hrs" data-w="'+w+'" data-k="close"'+dis+'>'+optsHtml(HM_OPTS,m.close)+'</select><label class="row" style="gap:4px;margin-inline-start:6px"><input type="checkbox" style="width:auto" data-chg="hrsClosed" data-w="'+w+'"'+(cl?' checked':'')+'> סגור</label></div>';
   }
-  h+='</div><div class="card"><h3>ייבוא עובדים מקובץ</h3><p class="muted">קובץ CSV עם העמודות: שם, טלפון, תפקידים (מופרדים ב-;). עובדים שכבר קיימים (לפי שם) מדולגים. הקובץ לא נשמר בשום מקום מלבד המסד שלך.</p><button class="btn sec" data-act="impPick">בחר קובץ…</button><input type="file" id="impFile" accept=".csv,.txt" hidden data-chg="impFile"></div><div class="card"><h3>מצב מערכת</h3><div class="muted">'+(Store.mode==='cloud'?'פרודקשן — מחובר למסד הנתונים המשותף ('+esc(Store.cfg.projectId)+').':'מצב בדיקה מקומי (?demo).')+'</div></div>';
+  h+='</div>'+specialDaysCard()+'<div class="card"><h3>ייבוא עובדים מקובץ</h3><p class="muted">קובץ CSV עם העמודות: שם, טלפון, תפקידים (מופרדים ב-;). עובדים שכבר קיימים (לפי שם) מדולגים. הקובץ לא נשמר בשום מקום מלבד המסד שלך.</p><button class="btn sec" data-act="impPick">בחר קובץ…</button><input type="file" id="impFile" accept=".csv,.txt" hidden data-chg="impFile"></div><div class="card"><h3>מצב מערכת</h3><div class="muted">'+(Store.mode==='cloud'?'פרודקשן — מחובר למסד הנתונים המשותף ('+esc(Store.cfg.projectId)+').':'מצב בדיקה מקומי (?demo).')+'</div></div>';
   return h;
 }
 
@@ -726,7 +742,7 @@ function shiftModal(id,date,pre){
   const roles=sortedRoles();
   openModal('<h2>'+(id?'עריכת משמרת':'משמרת חדשה')+' · '+fmtDay(s.date)+'</h2>'+
    '<label class="f">תפקיד</label><select id="sm-role" data-chg="smRole"><option value="">בחר תפקיד…</option>'+roles.map(r=>'<option value="'+r.id+'"'+(r.id===s.roleId?' selected':'')+'>'+esc(r.name)+'</option>').join('')+'</select>'+
-   '<div class="two"><div><label class="f">משעה</label><select id="sm-from" data-chg="smTime">'+optsHtml(FROM_OPTS,s.from,fmtT)+'</select></div><div><label class="f">עד שעה</label><select id="sm-to" data-chg="smTime">'+optsHtml(TO_OPTS,s.to,fmtT)+'</select></div></div>'+
+   '<div class="two"><div><label class="f">משעה</label><select id="sm-from" data-chg="smTime">'+optsHtml(fromOptsFor(s.date),normTok(s.from,s.date,false),fmtT)+'</select></div><div><label class="f">עד שעה</label><select id="sm-to" data-chg="smTime">'+optsHtml(toOptsFor(s.date),normTok(s.to,s.date,true),fmtT)+'</select></div></div>'+
    '<label class="f">הצג עובדים</label><select id="sm-filter" data-chg="smFilter"></select>'+
    '<label class="f">עובד</label><select id="sm-emp"></select>'+
    '<div style="height:14px"></div><div class="row"><button class="btn grow" data-act="shiftSave">שמור</button>'+(id?'<button class="btn danger" data-act="shiftDel">מחק</button>':'')+'<button class="btn ghost" data-act="closeModal">ביטול</button></div>');
@@ -746,7 +762,7 @@ function empModal(id){
   openModal('<h2>'+(id?'עריכת עובד':'עובד חדש')+'</h2><input type="hidden" id="em-id" value="'+(id||'')+'">'+
     '<label class="f">שם מלא</label><input type="text" id="em-name" value="'+esc(e.name)+'">'+
     '<label class="f">טלפון (לכניסה)</label><input type="tel" id="em-phone" inputmode="tel" value="'+esc(phoneOf(id))+'">'+(sec&&sec.pin?'<label class="f">קוד כניסה</label><div class="row wrap"><b style="letter-spacing:4px;font-size:20px">'+esc(sec.pin)+'</b><button class="btn sec sm" data-act="empPinSend" data-id="'+id+'">שלח בוואטסאפ</button><button class="btn ghost sm" data-act="empPinReset" data-id="'+id+'">אפס קוד</button></div>':(sec&&sec.selfSet?'<label class="f">קוד כניסה</label><div class="row wrap"><span class="muted">העובד החליף את הקוד בעצמו</span><button class="btn ghost sm" data-act="empPinReset" data-id="'+id+'">אפס קוד</button></div>':''))+
-    '<label class="f">תפקידים שהעובד יכול לעבוד בהם</label><div class="checks">'+sortedRoles().map(r=>'<label><input type="checkbox" class="em-role" value="'+r.id+'"'+((e.roles||[]).includes(r.id)?' checked':'')+'>'+esc(r.name)+'</label>').join('')+'</div>'+
+    '<label class="f">תפקידים שהעובד יכול לעבוד בהם</label><div class="checks"><label style="font-weight:800"><input type="checkbox" id="em-allroles" data-chg="emAll"'+(sortedRoles().length&&sortedRoles().every(r=>(e.roles||[]).includes(r.id))?' checked':'')+'> כל התפקידים</label></div><div class="checks" style="margin-top:4px">'+sortedRoles().map(r=>'<label><input type="checkbox" class="em-role" data-chg="emOne" value="'+r.id+'"'+((e.roles||[]).includes(r.id)?' checked':'')+'>'+esc(r.name)+'</label>').join('')+'</div>'+
     '<div class="checks" style="margin-top:12px"><label><input type="checkbox" id="em-mgr"'+(e.isManager?' checked':'')+'> מנהל/ת (בונה סידור)</label>'+(id?'<label><input type="checkbox" id="em-active"'+(e.active!==false?' checked':'')+'> פעיל/ה</label>':'')+'</div>'+
     '<div style="height:14px"></div><div class="row"><button class="btn grow" data-act="empSave">שמור</button><button class="btn ghost" data-act="closeModal">ביטול</button></div>');
 }
@@ -915,13 +931,30 @@ const A={
   },
   dayHours(){
     const date=S.bDay,h=hoursFor(date);
-    openModal('<h2>שעות '+fmtDay(date)+'</h2><p class="muted">משפיע על התרגום של "פתיחה" ו"סגירה" ביום הזה בלבד.</p><div class="two"><div><label class="f">פתיחה</label><select id="dh-open">'+optsHtml(HM_OPTS,h.open)+'</select></div><div><label class="f">סגירה</label><select id="dh-close">'+optsHtml(HM_OPTS,h.close)+'</select></div></div>'+
+    openModal('<h2>שעות / חג — '+fmtDay(date)+'</h2><p class="muted">משפיע על היום הזה בלבד ("פתיחה" ו"סגירה" יתורגמו לשעות החדשות).</p><div class="two"><div><label class="f">פתיחה</label><select id="dh-open">'+optsHtml(HM_OPTS,h.open)+'</select></div><div><label class="f">סגירה</label><select id="dh-close">'+optsHtml(HM_OPTS,h.close)+'</select></div></div>'+
+      '<label class="f">שם (לא חובה, למשל "ערב חג")</label><input type="text" id="dh-label" value="'+esc(h.label||'')+'">'+
+      '<div class="checks" style="margin-top:10px"><label><input type="checkbox" id="dh-closed" data-chg="dhClosed"> יום חג — המקום סגור (לא עובדים, ולא מציגים אותו בסידור ובזמינות)</label></div>'+
       '<div style="height:14px"></div><div class="row"><button class="btn grow" data-act="dayHoursSave">שמור</button>'+(h.custom?'<button class="btn ghost" data-act="dayHoursReset">אפס</button>':'')+'<button class="btn ghost" data-act="closeModal">ביטול</button></div>');
   },
   dayHoursSave(){
-    const o=$('#dh-open').value,c=$('#dh-close').value;if(toMin(o)>=toMin(c))return toast('הסגירה חייבת להיות אחרי הפתיחה');
-    Store.set('days',S.bDay,{open:o,close:c});closeModal();
+    const closed=$('#dh-closed').checked,label=$('#dh-label').value.trim(),o=$('#dh-open').value,c=$('#dh-close').value;
+    if(!closed&&toMin(o)>=toMin(c))return toast('הסגירה חייבת להיות אחרי הפתיחה');
+    if(closed){if(shiftsOn(S.bDay).length&&!confirm('יש משמרות ביום הזה. לסמן כחג בכל זאת? (המשמרות יישארו)'))return;Store.set('days',S.bDay,{closed:true,label});toast('היום סומן כסגור — אפשר לשנות בהגדרות ← ימים מיוחדים')}
+    else Store.set('days',S.bDay,{open:o,close:c,label});
+    closeModal();
   },
+  sdSave(){
+    const d=$('#sd-date').value;if(!d)return toast('בחר תאריך');
+    const closed=$('#sd-closed').checked,o=$('#sd-open').value,c=$('#sd-close').value,label=$('#sd-label').value.trim();
+    if(!closed&&toMin(o)>=toMin(c))return toast('הסגירה חייבת להיות אחרי הפתיחה');
+    Store.set('days',d,closed?{closed:true,label}:{open:o,close:c,label});toast('נשמר ✓');
+  },
+  sdEdit(d){
+    const x=hoursFor(d.date);$('#sd-date').value=d.date;$('#sd-label').value=x.label||'';$('#sd-closed').checked=x.closed;
+    $('#sd-open').innerHTML=optsHtml(HM_OPTS,x.open);$('#sd-close').innerHTML=optsHtml(HM_OPTS,x.close);C.sdClosed($('#sd-closed'));
+    $('#sd-date').scrollIntoView({behavior:'smooth',block:'center'});
+  },
+  sdDel(d){if(confirm('למחוק את היום המיוחד? הוא יחזור לברירת המחדל של יום בשבוע.'))Store.del('days',d.date)},
   dayHoursReset(){Store.del('days',S.bDay);closeModal()},
   copyDay(){
     openModal('<h2>העתקת משמרות ליום '+fmtDay(S.bDay)+'</h2><p class="muted">המשמרות מהיום שתבחר יתווספו ליום הזה (אותם עובדים ותפקידים, ללא מחיקה של מה שקיים). ברירת מחדל: אותו יום בשבוע שעבר.</p><label class="f">העתק מתאריך</label><input type="date" id="cd-date" value="'+addDays(S.bDay,-7)+'">'+
@@ -1053,6 +1086,10 @@ const C={ /* שינוי ערך בשדה */
     map[el.dataset.w]=Object.assign({},map[el.dataset.w],{[el.dataset.k]:el.value});
     Store.set('settings','hours',{map});
   },
+  emAll(el){document.querySelectorAll('.em-role').forEach(c=>c.checked=el.checked)},
+  emOne(){const l=[...document.querySelectorAll('.em-role')],a=$('#em-allroles');if(a)a.checked=l.length>0&&l.every(c=>c.checked)},
+  sdClosed(el){['sd-open','sd-close'].forEach(i=>{const x=$('#'+i);if(x)x.disabled=el.checked})},
+  dhClosed(el){['dh-open','dh-close'].forEach(i=>{const x=$('#'+i);if(x)x.disabled=el.checked})},
   trayF(el){S.trayF=el.value;if(document.activeElement)document.activeElement.blur();render()},trayRole(el){S.trayRole=el.value;if(document.activeElement)document.activeElement.blur();render()},
   smRole(){refreshEmpSelect()},smTime(){refreshEmpSelect()},smFilter(el){S.sm.filter=el.value;refreshEmpSelect('')}
 };
