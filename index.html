@@ -122,7 +122,7 @@ details summary{cursor:pointer;color:var(--primary);font-size:13px;font-weight:7
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='5.1';
+const APP_VERSION='5.2';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -243,11 +243,11 @@ const authMsg=e=>{const c=(e&&e.code)||'';
 /* ================= לוגיקה עסקית ================= */
 const DEF_HOURS={0:['09:30','20:00'],1:['09:30','20:00'],2:['09:30','20:00'],3:['09:30','20:00'],4:['09:30','20:00'],5:['09:30','14:00'],6:['18:30','23:00']};
 function hoursFor(date){
-  const d=D('days')[date];if(d)return {open:d.open,close:d.close,custom:true};
+  const d=D('days')[date];if(d)return {open:d.open,close:d.close,custom:true,closed:false};
   const s=D('settings').hours;const w=dowOf(date);
   const m=s&&s.map&&s.map[w];
   const x=m||{open:DEF_HOURS[w][0],close:DEF_HOURS[w][1]};
-  return {open:x.open,close:x.close,custom:false};
+  return {open:x.open,close:x.close,custom:false,closed:!!(m&&m.closed)};
 }
 const resolve=(tok,date)=>tok==='open'?hoursFor(date).open:tok==='close'?hoursFor(date).close:tok;
 const emp=id=>D('employees')[id];
@@ -374,6 +374,7 @@ function viewMyAvail(){
      '<button class="btn sec sm" data-act="avCopy">העתק מהשבוע הקודם</button></div>';
   for(let i=0;i<7;i++){
     const date=addDays(S.avWeek,i),d=S.draft[date],hr=hoursFor(date);
+    if(hr.closed){h+='<div class="card" style="opacity:.65"><div class="row between"><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="chip">סגור</span></div><div class="muted" style="margin-top:6px">המקום סגור ביום הזה — אין משמרות.</div></div>';continue}
     h+='<div class="card'+(S.missing.includes(date)?' miss':'')+'"><div class="row between"><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="muted">'+hr.open+'–'+hr.close+'</span></div>'+
     '<div class="seg" style="margin-top:8px">'+
       '<button class="off'+(d&&d.t==='off'?' on':'')+'" data-act="avType" data-date="'+date+'" data-t="off">לא זמין</button>'+
@@ -415,7 +416,7 @@ function viewBuild(){
      '<div class="row"><button class="btn sec sm" data-act="exportWeek">שלח כטקסט</button><button class="btn sm '+(pub?'ghost':'ok')+'" data-act="publish">'+(pub?'בטל פרסום':'פרסם באפליקציה')+'</button></div></div><div class="muted" style="margin:-4px 0 10px">פרסום באפליקציה — העובדים רואים את המשמרות שלהם בתוך האפליקציה. שליחה כטקסט — העתקה/וואטסאפ בלבד, לא משנה מה העובדים רואים.</div>';
   h+='<div class="pills">';
   for(let i=0;i<7;i++){const d=addDays(ws,i);h+='<button class="pill'+(d===date?' on':'')+(d===t?' today':'')+'" data-act="day" data-date="'+d+'">'+DOW[i]+'<b>'+parse(d).getDate()+'</b>'+shiftsOn(d).length+' משמרות</button>'}
-  h+='</div><div class="card"><div class="row between wrap"><div><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="muted">פתיחה '+hr.open+' · סגירה '+hr.close+(hr.custom?' (מותאם)':'')+'</span></div>'+
+  h+='</div><div class="card"><div class="row between wrap"><div><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="muted">פתיחה '+hr.open+' · סגירה '+hr.close+(hr.custom?' (מותאם)':'')+'</span>'+(hr.closed?' <span class="chip warn">המקום סגור ביום הזה</span>':'')+'</div>'+
      '<div class="row wrap"><button class="btn ghost sm" data-act="dayHours">שעות היום</button><button class="btn ghost sm" data-act="copyDay">העתק מיום…</button><button class="btn sec sm" data-act="exportDay">שלח יום כטקסט</button></div></div></div>';
   if(!list.length)h+='<div class="card empty">אין משמרות ליום הזה. לחץ על "+ משמרת".</div>';
   list.forEach(s=>{
@@ -493,10 +494,11 @@ function viewSettings(){
   let h='<h2>הגדרות</h2><div class="card"><h3>תפקידים / מתקנים</h3>';
   sortedRoles().forEach(r=>{h+='<div class="row between" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>'+esc(r.name)+'</span><span class="row"><button class="btn ghost sm" data-act="roleRename" data-id="'+r.id+'">שנה שם</button><button class="btn danger sm" data-act="roleDel" data-id="'+r.id+'">מחק</button></span></div>'});
   h+='<div class="row" style="margin-top:10px"><input type="text" id="newRole" placeholder="תפקיד חדש"><button class="btn sm" data-act="roleAdd">הוסף</button></div></div>';
-  h+='<div class="card"><h3>שעות פתיחה וסגירה — ברירת מחדל לפי יום בשבוע</h3><p class="muted">"פתיחה" ו"סגירה" במשמרות יתורגמו לשעות האלה. אפשר לשנות יום ספציפי (חופשה/חג) מתוך מסך הסידור.</p>';
+  h+='<div class="card"><h3>שעות פתיחה וסגירה — ברירת מחדל לפי יום בשבוע</h3><p class="muted">"פתיחה" ו"סגירה" במשמרות יתורגמו לשעות האלה. סימון "סגור" = המקום לא עובד ביום הזה, ועובדים לא יוכלו לסמן בו זמינות. אפשר לשנות יום ספציפי (חופשה/חג) מתוך מסך הסידור.</p>';
   for(let w=0;w<7;w++){
     const s=D('settings').hours,m=(s&&s.map&&s.map[w])||{open:DEF_HOURS[w][0],close:DEF_HOURS[w][1]};
-    h+='<div class="row" style="margin:6px 0"><span style="min-width:62px;font-weight:700">'+DOW[w]+'</span><select data-chg="hrs" data-w="'+w+'" data-k="open">'+optsHtml(HM_OPTS,m.open)+'</select><span>–</span><select data-chg="hrs" data-w="'+w+'" data-k="close">'+optsHtml(HM_OPTS,m.close)+'</select></div>';
+    const cl=!!m.closed,dis=cl?' disabled':'';
+    h+='<div class="row wrap" style="margin:6px 0"><span style="min-width:62px;font-weight:700">'+DOW[w]+'</span><select data-chg="hrs" data-w="'+w+'" data-k="open"'+dis+'>'+optsHtml(HM_OPTS,m.open)+'</select><span>–</span><select data-chg="hrs" data-w="'+w+'" data-k="close"'+dis+'>'+optsHtml(HM_OPTS,m.close)+'</select><label class="row" style="gap:4px;margin-inline-start:6px"><input type="checkbox" style="width:auto" data-chg="hrsClosed" data-w="'+w+'"'+(cl?' checked':'')+'> סגור</label></div>';
   }
   h+='</div><div class="card"><h3>ייבוא עובדים מקובץ</h3><p class="muted">קובץ CSV עם העמודות: שם, טלפון, תפקידים (מופרדים ב-;). עובדים שכבר קיימים (לפי שם) מדולגים. הקובץ לא נשמר בשום מקום מלבד המסד שלך.</p><button class="btn sec" data-act="impPick">בחר קובץ…</button><input type="file" id="impFile" accept=".csv,.txt" hidden data-chg="impFile"></div><div class="card"><h3>מצב מערכת</h3><div class="muted">'+(Store.mode==='cloud'?'פרודקשן — מחובר למסד הנתונים המשותף ('+esc(Store.cfg.projectId)+').':'מצב בדיקה מקומי (?demo).')+'</div></div>';
   return h;
@@ -636,9 +638,10 @@ const A={
     S.draft=o;S.missing=[];render();toast('הועתק — בדוק ושלח');
   },
   avSubmit(){
-    const miss=[];for(let i=0;i<7;i++){const d=addDays(S.avWeek,i);if(!S.draft[d])miss.push(d)}
+    const miss=[];for(let i=0;i<7;i++){const d=addDays(S.avWeek,i);if(hoursFor(d).closed){S.draft[d]={t:'off',from:'open',to:'close',note:'',closed:true};continue}if(!S.draft[d])miss.push(d)}
     if(miss.length){S.missing=miss;render();return toast('נא לסמן את כל הימים')}
     for(let i=0;i<7;i++){const d=addDays(S.avWeek,i),x=S.draft[d];
+      if(hoursFor(d).closed)continue;
       if(x.t==='range'&&toMin(resolve(x.from,d))>=toMin(resolve(x.to,d))){S.missing=[d];render();return toast('בדוק את השעות ב'+fmtDay(d))}}
     Store.set('availability',S.avWeek+'_'+S.userId,{empId:S.userId,weekStart:S.avWeek,days:S.draft,updatedAt:Date.now()});
     S.draftSaved=true;S.missing=[];render();toast('הזמינות נשלחה ✓');
@@ -798,6 +801,12 @@ const C={ /* שינוי ערך בשדה */
   empRole(el){S.empRole=el.value;if(document.activeElement)document.activeElement.blur();render()},empStatus(el){S.empStatus=el.value;if(document.activeElement)document.activeElement.blur();render()},
   avFrom(el){S.draft[el.dataset.date].from=el.value},
   avTo(el){S.draft[el.dataset.date].to=el.value},
+  hrsClosed(el){
+    const s=D('settings').hours,map=Object.assign({},(s&&s.map)||{});
+    for(let w=0;w<7;w++)if(!map[w])map[w]={open:DEF_HOURS[w][0],close:DEF_HOURS[w][1]};
+    map[el.dataset.w]=Object.assign({},map[el.dataset.w],{closed:el.checked});
+    Store.set('settings','hours',{map});
+  },
   hrs(el){
     const s=D('settings').hours,map=Object.assign({},(s&&s.map)||{});
     for(let w=0;w<7;w++)if(!map[w])map[w]={open:DEF_HOURS[w][0],close:DEF_HOURS[w][1]};
