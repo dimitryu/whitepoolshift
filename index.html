@@ -104,7 +104,7 @@ label.f{display:block;margin:10px 0 4px;font-size:13px;font-weight:700;color:var
 .sheet{position:absolute;bottom:0;right:0;left:0;max-height:92vh;overflow:auto;background:#fff;border-radius:24px 24px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 18px);max-width:560px;margin:auto}
 @media(min-width:800px){.sheet{top:50%;bottom:auto;transform:translateY(-50%);border-radius:24px}}
 .sheet h2{margin-top:0}
-pre.exp{white-space:pre-wrap;background:#fff3f7;border-radius:12px;padding:12px;font-family:inherit;font-size:14px;max-height:50vh;overflow:auto;direction:rtl;text-align:right}
+pre.exp,div.exp{white-space:pre-wrap;background:#fff3f7;border-radius:12px;padding:12px;font-family:inherit;font-size:14px;max-height:50vh;overflow:auto;direction:rtl;text-align:right}
 #toast{position:fixed;bottom:100px;right:50%;transform:translateX(50%);background:#12263f;color:#fff;padding:10px 18px;border-radius:999px;z-index:60;opacity:0;pointer-events:none;transition:opacity .25s;font-size:14px;max-width:90vw}
 #toast.show{opacity:1}
 .center-screen{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:center;max-width:420px;margin:auto;padding:20px}
@@ -114,6 +114,51 @@ pre.exp{white-space:pre-wrap;background:#fff3f7;border-radius:12px;padding:12px;
 .checks input{width:auto}
 .mine{border-right:5px solid var(--sun)}
 details summary{cursor:pointer;color:var(--primary);font-size:13px;font-weight:700;margin-top:8px}
+
+/* ---- לוח שיבוץ ---- */
+main.wide{max-width:1100px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-inline-end:4px;background:#cfc6d3}
+.dot.ok{background:var(--ok)} .dot.bad{background:var(--danger)}
+.board{display:block}
+.tray{background:#fff;border-radius:16px;box-shadow:var(--shadow);padding:8px;margin-bottom:12px;position:sticky;top:0;z-index:12}
+.tray-f{display:flex;gap:6px;margin-bottom:6px}.tray-f select{flex:1;min-width:0;padding:6px 8px;font-size:13px}
+.tray-l{display:flex;gap:6px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:thin}
+.pickbar{background:#fff3dc;color:#7a5200;border-radius:10px;padding:6px 10px;font-size:13px;font-weight:700;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ec{flex:0 0 auto;min-width:108px;max-width:150px;border-radius:12px;border:2px solid var(--line);background:#fff;padding:5px 9px;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.ec b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ec small{display:block;font-size:11px;color:var(--muted);white-space:nowrap}
+.ec.st-full{border-color:#9be3bb;background:#f2fbf6}.ec.st-part{border-color:#a9d8ff;background:#f1f9ff}
+.ec.st-none{border-style:dashed;border-color:#f3cf86;background:#fffaf0}.ec.st-off{opacity:.55}
+.ec.asg{opacity:.7}.ec.asg small.as{color:var(--primary);font-weight:700}
+.ec.picked{border-color:var(--primary);box-shadow:0 0 0 3px #ffd0e0}
+.lanes{display:grid;grid-template-columns:1fr;gap:10px}
+.lane{background:#fff;border-radius:16px;border:2px solid var(--line);padding:10px;box-shadow:var(--shadow);cursor:pointer;transition:transform .1s}
+.lane.ok{border-color:var(--ok);background:#f2fbf6}.lane.bad{border-color:var(--danger);background:#fff6f6}
+.lane.empty{border-style:dashed}
+.lane.target{outline:3px dashed var(--aqua);outline-offset:2px}.lane.no{opacity:.45}
+.lane.over{outline:3px solid var(--primary);transform:scale(1.015)}
+.lane-h{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.lane-h b{font-size:16px}
+.lane-h .x{margin-inline-start:auto;border:0;background:none;color:var(--muted);font-size:13px;padding:2px 6px}
+.tl{position:relative;height:9px;border-radius:5px;background:#f9c9cb;margin:8px 0;overflow:hidden}
+.lane.ok .tl{background:#bfe9d0}.lane:not(.ok):not(.bad) .tl{background:#eadfe5}
+.tl i{position:absolute;top:0;bottom:0;background:var(--ok)}
+.lane-c{display:flex;flex-wrap:wrap;gap:6px;min-height:26px}
+.sc{display:inline-flex;gap:6px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:999px;padding:3px 4px 3px 10px;font-size:13px}
+.sc.warn{border-color:var(--danger);background:#fff0f0}.sc.w2{border-color:var(--warn)}
+.sc em{font-style:normal;color:var(--primary);font-weight:700;font-size:12px}
+.sc i{font-style:normal;opacity:.55;padding:0 5px;font-size:14px}
+.lane .hint{color:var(--muted);font-size:12px}
+.miss{background:#fff6f6;border:1.5px solid #f6c3c5;border-radius:14px;padding:10px;margin-bottom:12px}
+.miss.okk{background:#f2fbf6;border-color:#9be3bb}
+.miss button{border:0;background:#fff;border-radius:999px;padding:4px 10px;font-size:12px;margin:3px 0 0 4px;box-shadow:var(--shadow);color:var(--danger);font-weight:700}
+.ghost-ec{position:fixed;z-index:200;pointer-events:none;background:var(--primary);color:#fff;border-radius:12px;padding:7px 12px;font-weight:700;font-size:14px;box-shadow:0 8px 22px rgba(232,51,109,.45);transform:translate(-50%,-120%)}
+.seg2{display:inline-flex;border:1.5px solid var(--line);border-radius:12px;overflow:hidden}.seg2 button{border:0;background:#fff;padding:6px 12px;font-size:13px;color:var(--muted)}.seg2 button.on{background:#0e0e0e;color:#fff}
+@media(min-width:900px){
+  .board{display:grid;grid-template-columns:250px 1fr;gap:14px;align-items:start}
+  .tray{position:sticky;top:8px;max-height:calc(100vh - 30px);overflow:auto;margin:0}
+  .tray-l{flex-direction:column;overflow:visible}.ec{max-width:none}
+  .lanes{grid-template-columns:1fr 1fr}
+}
 </style>
 </head>
 <body>
@@ -122,7 +167,7 @@ details summary{cursor:pointer;color:var(--primary);font-size:13px;font-weight:7
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='5.2';
+const APP_VERSION='6.0';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -353,7 +398,7 @@ function viewShell(){
     '<div class="top-actions">'+(u.isManager?'<button class="icon-btn" data-act="switchView">'+(S.view==='manager'?'👤 כעובד':'🛠 כמנהל')+'</button>':'')+
     '<button class="icon-btn" data-act="pinChange" aria-label="החלפת קוד">🔑</button><button class="icon-btn" data-act="logout">יציאה</button></div></div></header>'+
     '<nav class="tabs">'+tabs.map(t=>'<button class="tab'+(S.tab===t[0]?' on':'')+'" data-act="tab" data-t="'+t[0]+'"><span>'+t[2]+'</span>'+t[1]+'</button>').join('')+'</nav>'+
-    '<main>'+(Store.mode==='demo'?'<div class="banner">מצב בדיקה מקומי (?demo) — הנתונים נשמרים רק במכשיר הזה.</div>':'')+body+'</main></div>';
+    '<main'+(S.tab==='build'&&(S.bMode||'board')==='board'?' class="wide"':'')+'>'+(Store.mode==='demo'?'<div class="banner">מצב בדיקה מקומי (?demo) — הנתונים נשמרים רק במכשיר הזה.</div>':'')+body+'</main></div>';
 }
 function weekBar(key,ws){
   return '<div class="weekbar"><button class="nav-btn" data-act="wk" data-key="'+key+'" data-d="7" aria-label="שבוע הבא">›</button>'+
@@ -366,6 +411,153 @@ function ensureDraft(){
   const k=S.avWeek+'_'+S.userId;if(S.draftKey===k)return;
   const ex=availDoc(S.userId,S.avWeek);
   S.draft=ex&&ex.days?JSON.parse(JSON.stringify(ex.days)):{};S.draftSaved=!!ex;S.draftKey=k;S.missing=[];
+}
+
+/* ================= לוח שיבוץ ================= */
+const mmT=m=>pad(Math.floor(m/60))+':'+pad(m%60);
+const tokS=(m,date)=>m===toMin(hoursFor(date).open)?'open':mmT(m);
+const tokE=(m,date)=>m===toMin(hoursFor(date).close)?'close':mmT(m);
+const dayWin=date=>{const h=hoursFor(date);return [toMin(h.open),toMin(h.close)]};
+const ivOf=s=>[toMin(resolve(s.from,s.date)),toMin(resolve(s.to,s.date))];
+function mergeIv(l){l=l.filter(x=>x[1]>x[0]).sort((a,b)=>a[0]-b[0]);const o=[];l.forEach(x=>{const k=o[o.length-1];if(k&&x[0]<=k[1])k[1]=Math.max(k[1],x[1]);else o.push(x.slice())});return o}
+function gapsOf(list,win){let cur=win[0];const g=[];mergeIv(list).forEach(x=>{if(x[0]>cur)g.push([cur,Math.min(x[0],win[1])]);cur=Math.max(cur,x[1])});if(cur<win[1])g.push([cur,win[1]]);return g.filter(x=>x[1]>x[0])}
+const skipOf=date=>((D('weeks')[weekStart(date)]||{}).skip||{})[date]||[];
+function laneInfo(date,roleId,extra){const win=dayWin(date),sh=shiftsOn(date).filter(s=>s.roleId===roleId);return {shifts:sh,gaps:gapsOf(sh.map(ivOf).concat(extra||[]),win),win}}
+function reqRoles(date){const sk=skipOf(date),sh=shiftsOn(date);return sortedRoles().filter(r=>!sk.includes(r.id)||sh.some(s=>s.roleId===r.id))}
+function dayStatus(date){
+  if(hoursFor(date).closed)return 'grey';
+  const rr=reqRoles(date);if(!shiftsOn(date).length)return 'grey';
+  return rr.every(r=>!laneInfo(date,r.id).gaps.length)?'ok':'bad';
+}
+const gapTxt=g=>'\u2066'+mmT(g[0])+'–'+mmT(g[1])+'\u2069';
+function availWin(empId,date){const a=availState(empId,date),w=dayWin(date);if(a.s!=='on')return null;const f=Math.max(w[0],toMin(resolve(a.from,date))),t=Math.min(w[1],toMin(resolve(a.to,date)));return t>f?[f,t]:null}
+function empBusy(empId,date,exceptId){return shiftsOn(date).filter(s=>s.empId===empId&&s.id!==exceptId).map(ivOf)}
+function setSkip(date,roleId,on){
+  const ws=weekStart(date),w=Object.assign({},D('weeks')[ws]||{}),sk=Object.assign({},w.skip||{});
+  let l=(sk[date]||[]).filter(x=>x!==roleId);if(on)l.push(roleId);
+  if(l.length)sk[date]=l;else delete sk[date];
+  w.skip=sk;Store.set('weeks',ws,w);
+}
+function trayList(date){
+  let l=activeEmps().filter(e=>!e.isManager||(e.roles||[]).length);
+  if(S.trayRole)l=l.filter(e=>(e.roles||[]).includes(S.trayRole));
+  const f=S.trayF||'avail';
+  const st=e=>{const a=availState(e.id,date);if(a.s==='on')return (a.from==='open'&&a.to==='close')?'full':'part';return a.s};
+  l=l.map(e=>({e,st:st(e)}));
+  if(f==='avail')l=l.filter(x=>x.st==='full'||x.st==='part');
+  else if(f==='sub')l=l.filter(x=>x.st!=='off'); /* כולל שלא הגישו */
+  const rank={full:0,part:1,none:2,off:3};
+  const asg=e=>shiftsOn(date).some(s=>s.empId===e.id);
+  return l.sort((a,b)=>(asg(a.e)-asg(b.e))||rank[a.st]-rank[b.st]||a.e.name.localeCompare(b.e.name,'he'));
+}
+function boardHtml(date,hr){
+  const rr=reqRoles(date),sk=skipOf(date),allShifts=shiftsOn(date);
+  const pick=S.pick&&emp(S.pick)?S.pick:null;
+  /* מה חסר */
+  const miss=[];rr.forEach(r=>{const li=laneInfo(date,r.id);li.gaps.forEach(g=>miss.push({r,g,li}))});
+  let h='<div class="board">';
+  /* מגש עובדים */
+  const tl=trayList(date);
+  h+='<aside class="tray"><div class="tray-f"><select data-chg="trayF"><option value="avail"'+((S.trayF||'avail')==='avail'?' selected':'')+'>זמינים ליום הזה</option><option value="sub"'+(S.trayF==='sub'?' selected':'')+'>כולל מי שלא הגישו</option><option value="all"'+(S.trayF==='all'?' selected':'')+'>כל העובדים</option></select>'+
+    '<select data-chg="trayRole"><option value="">כל התפקידים</option>'+sortedRoles().map(r=>'<option value="'+r.id+'"'+(S.trayRole===r.id?' selected':'')+'>'+esc(r.name)+'</option>').join('')+'</select></div>'+
+    (pick?'<div class="pickbar"><span>נבחר/ה: '+esc(empName(pick))+' — הקש על תפקיד לשיבוץ</span><button class="btn ghost sm" data-act="pickEmp" data-id="'+pick+'">ביטול</button></div>':'<div class="muted" style="font-size:12px;margin-bottom:4px">גרור עובד לתפקיד, או הקש עליו ואז על התפקיד</div>')+
+    '<div class="tray-l" id="tray">'+(tl.length?tl.map(({e,st})=>{
+      const a=availState(e.id,date),mine=allShifts.filter(s=>s.empId===e.id);
+      const at=st==='full'?'כל היום':st==='part'?describeAvail(a):st==='none'?'לא הגיש/ה':'לא זמין/ה';
+      return '<div class="ec st-'+st+(mine.length?' asg':'')+(pick===e.id?' picked':'')+'" data-drag="'+e.id+'" data-act="pickEmp" data-id="'+e.id+'"><b>'+esc(e.name)+'</b><small>'+esc(at)+'</small>'+(mine.length?'<small class="as">'+esc(mine.map(exHours).join(', '))+'</small>':'')+'</div>'}).join(''):'<div class="muted">אין עובדים בסינון הזה</div>')+'</div></aside>';
+  h+='<div>';
+  /* חוסרים */
+  if(!allShifts.length&&rr.length)h+='<div class="miss"><b>היום עוד ריק.</b> גרור עובדים לתפקידים, או לחץ על "✨ פזר יום".</div>';
+  else if(!miss.length)h+='<div class="miss okk"><b>✓ כל התפקידים מכוסים לאורך כל היום</b></div>';
+  else h+='<div class="miss"><b>חסר כיסוי ('+miss.length+'):</b><br>'+miss.map(m=>'<button data-act="goLane" data-role="'+m.r.id+'">'+esc(m.r.name)+' '+gapTxt(m.g)+'</button>').join('')+'</div>';
+  h+='<div class="lanes">';
+  rr.forEach(r=>{
+    const li=laneInfo(date,r.id),n=li.shifts.length;
+    const cls=li.gaps.length?'bad':'ok';
+    const el=pick?((emp(pick).roles||[]).includes(r.id)?' target':' no'):'';
+    const [w0,w1]=li.win,tot=Math.max(1,w1-w0);
+    const segs=mergeIv(li.shifts.map(ivOf)).map(x=>'<i style="inset-inline-start:'+((Math.max(x[0],w0)-w0)/tot*100).toFixed(1)+'%;width:'+((Math.min(x[1],w1)-Math.max(x[0],w0))/tot*100).toFixed(1)+'%"></i>').join('');
+    h+='<div class="lane '+cls+(n?'':' empty')+el+'" id="lane-'+r.id+'" data-lane="'+r.id+'" data-act="laneTap" data-role="'+r.id+'">'+
+      '<div class="lane-h"><b>'+esc(r.name)+'</b>'+(li.gaps.length?'<span class="chip bad">'+(n?'חסר '+li.gaps.map(gapTxt).join(' · '):'ריק')+'</span>':'<span class="chip ok">מכוסה ✓</span>')+'<button class="x" data-act="laneSkip" data-role="'+r.id+'" title="לא נדרש היום">לא נדרש ✕</button></div>'+
+      '<div class="tl">'+segs+'</div><div class="lane-c">'+
+      (n?li.shifts.map(s=>{const w=warningsOf(s),c=w.some(x=>x.lvl==='b')?' warn':w.length?' w2':'';return '<span class="sc'+c+'" data-act="shiftEdit" data-id="'+s.id+'" title="'+esc(w.map(x=>x.t).join(' · '))+'">'+(w.length?'⚠ ':'')+esc(empName(s.empId))+' <em>'+esc(exHours(s))+'</em><i data-act="shiftX" data-id="'+s.id+'">✕</i></span>'}).join(''):'<span class="hint">גרור לכאן עובד · או הקש להוספה</span>')+'</div></div>';
+  });
+  h+='</div>';
+  if(sk.length){h+='<div class="card" style="margin-top:12px"><div class="muted" style="margin-bottom:6px">תפקידים שלא נדרשים ביום הזה:</div>'+sk.filter(id=>role(id)).map(id=>'<button class="btn ghost sm" style="margin:2px" data-act="laneUnskip" data-role="'+id+'">+ '+esc(roleName(id))+'</button>').join('')+'</div>'}
+  return h+'</div></div>';
+}
+/* הוספת עובד לתפקיד (גרירה / הקשה) */
+function dropEmp(empId,roleId){
+  const date=S.bDay,e=emp(empId);if(!e||!role(roleId))return;
+  const win=dayWin(date),rname=roleName(roleId);
+  if(hoursFor(date).closed&&!confirm('המקום סגור ביום הזה. לשבץ בכל זאת?'))return;
+  if(!(e.roles||[]).includes(roleId)&&!confirm(e.name+' ללא הרשאה לתפקיד '+rname+'. לשבץ בכל זאת?'))return;
+  const a=availState(empId,date);
+  if(a.s==='off'&&!confirm(e.name+' סימן/ה שלא זמין/ה ביום הזה. לשבץ בכל זאת?'))return;
+  const aw=availWin(empId,date)||win;
+  const li=laneInfo(date,roleId),busy=empBusy(empId,date);
+  let seg=null;
+  const tryIn=ranges=>{for(const g of ranges){const inter=[Math.max(g[0],aw[0]),Math.min(g[1],aw[1])];if(inter[1]<=inter[0])continue;const f=gapsOf(busy,inter);if(f.length){seg=f[0];return true}}return false};
+  if(!tryIn(li.gaps)&&!tryIn([aw])){return toast(e.name+' כבר משובץ/ת בכל השעות הזמינות')}
+  const id=Store.newId('shifts');
+  setSkip(date,roleId,false);
+  Store.set('shifts',id,{date,empId,roleId,from:tokS(seg[0],date),to:tokE(seg[1],date)});
+  S.pick=null;toast(e.name+' ← '+rname+' '+mmT(seg[0])+'–'+mmT(seg[1])+' · הקש על המשמרת לשינוי שעות');
+}
+/* פיזור אוטומטי */
+function autoFill(dates){
+  const created=[],ws=weekStart(dates[0]),wm={};
+  vals('shifts').forEach(s=>{if(weekStart(s.date)===ws){const[a,b]=ivOf(s);wm[s.empId]=(wm[s.empId]||0)+b-a}});
+  const work=vals('shifts').map(s=>({id:s.id,date:s.date,empId:s.empId,roleId:s.roleId,from:s.from,to:s.to}));
+  const pool=activeEmps().filter(e=>(e.roles||[]).length);
+  const missing=[];
+  dates.forEach(date=>{
+    if(hoursFor(date).closed)return;
+    const win=dayWin(date),sk=skipOf(date);
+    const day=()=>work.filter(s=>s.date===date);
+    const av={};pool.forEach(e=>{av[e.id]=availWin(e.id,date)});
+    const roles=sortedRoles().filter(r=>!sk.includes(r.id)||day().some(s=>s.roleId===r.id));
+    const cnt=r=>pool.filter(e=>av[e.id]&&e.roles.includes(r.id)).length;
+    roles.sort((a,b)=>cnt(a)-cnt(b));
+    roles.forEach(r=>{
+      const virt=[];let guard=0;
+      while(guard++<40){
+        const have=day().filter(s=>s.roleId===r.id).map(ivOf);
+        const gaps=gapsOf(have.concat(virt),win);if(!gaps.length)break;
+        const g=gaps[0],glen=g[1]-g[0];let best=null;
+        pool.forEach(e=>{
+          if(!e.roles.includes(r.id)||!av[e.id])return;
+          const inter=[Math.max(g[0],av[e.id][0]),Math.min(g[1],av[e.id][1])];if(inter[1]<=inter[0])return;
+          const busy=day().filter(s=>s.empId===e.id).map(ivOf);
+          gapsOf(busy,inter).forEach(seg=>{
+            const len=seg[1]-seg[0];if(len<Math.min(90,glen))return;
+            const sc=(seg[0]===g[0]?1e6:0)+Math.min(len,glen)*100-e.roles.length*8-(wm[e.id]||0)/60;
+            if(!best||sc>best.sc)best={sc,e,seg};
+          });
+        });
+        if(!best){virt.push(g);missing.push({date,roleId:r.id,gap:g});continue}
+        const o={id:Store.newId('shifts'),date,empId:best.e.id,roleId:r.id,from:tokS(best.seg[0],date),to:tokE(best.seg[1],date)};
+        work.push(o);created.push(o);wm[o.empId]=(wm[o.empId]||0)+best.seg[1]-best.seg[0];
+      }
+    });
+  });
+  return {created,missing};
+}
+function autoReport(res,scope){
+  const ids=res.created.map(s=>s.id);
+  res.created.forEach(o=>Store.set('shifts',o.id,{date:o.date,empId:o.empId,roleId:o.roleId,from:o.from,to:o.to}));
+  S.lastAuto=ids;
+  if(!res.missing.length)return toast('✨ שובצו '+ids.length+' משמרות — '+scope+' מכוסה במלואו');
+  const by={};res.missing.forEach(m=>{(by[m.date]=by[m.date]||[]).push(m)});
+  openModal('<h2>✨ הפיזור הושלם</h2><p>נוספו <b>'+ids.length+'</b> משמרות. עדיין חסר כיסוי ב:</p>'+Object.keys(by).sort().map(d=>{const np=by[d].filter(m=>!activeEmps().some(e=>(e.roles||[]).includes(m.roleId))),rest=by[d].filter(m=>!np.includes(m));return '<div style="margin:8px 0"><b>'+fmtDay(d)+'</b>'+(np.length?'<div class="muted" style="padding:4px 0;border-bottom:1px solid var(--line)">אין עובד מורשה לתפקידים: '+esc([...new Set(np.map(m=>roleName(m.roleId)))].join(', '))+'</div>':'')+rest.map(m=>'<div class="row" style="padding:4px 0;border-bottom:1px solid var(--line)"><span class="chip bad">'+esc(roleName(m.roleId))+'</span><span>'+gapTxt(m.gap)+'</span><span class="muted grow">'+esc(whyMissing(m.date,m.roleId,m.gap))+'</span></div>').join('')+'</div>'}).join('')+
+    '<p class="muted">אפשר לשבץ ידנית (אפילו עובד שלא סימן זמינות) או להרחיב זמינות/הרשאות.</p><div class="row"><button class="btn grow" data-act="closeModal">הבנתי</button><button class="btn danger" data-act="autoUndo">↩ בטל פיזור</button></div>');
+}
+function whyMissing(date,roleId,g){
+  const perm=activeEmps().filter(e=>(e.roles||[]).includes(roleId));
+  if(!perm.length)return 'אין עובד עם הרשאה לתפקיד';
+  const av=perm.filter(e=>{const w=availWin(e.id,date);return w&&w[0]<g[1]&&w[1]>g[0]});
+  if(!av.length)return 'אף עובד מורשה לא זמין בשעות האלה';
+  return 'העובדים הזמינים כבר משובצים בתפקידים אחרים';
 }
 function viewMyAvail(){
   ensureDraft();
@@ -409,15 +601,25 @@ function viewMyShifts(){
 /* ---- מנהל: סידור ---- */
 function viewBuild(){
   const ws=S.bWeek;
-  if(!S.bDay||weekStart(S.bDay)!==ws)S.bDay=(weekStart(todayIso())===ws?todayIso():ws);
+  const shown=d=>!hoursFor(d).closed||shiftsOn(d).length>0;
+  const openDays=[0,1,2,3,4,5,6].map(i=>addDays(ws,i)).filter(shown);
+  if(!openDays.length)return '<h2>בניית סידור</h2>'+weekBar('bWeek',ws)+'<div class="card empty">כל ימי השבוע מוגדרים כסגורים (הגדרות ← שעות פתיחה וסגירה).</div>';
+  if(!S.bDay||weekStart(S.bDay)!==ws||!openDays.includes(S.bDay))S.bDay=openDays.includes(todayIso())?todayIso():openDays[0];
   const t=todayIso(),pub=weekPublished(ws),date=S.bDay,hr=hoursFor(date),list=shiftsOn(date);
   let h='<h2>בניית סידור</h2>'+weekBar('bWeek',ws);
   h+='<div class="row between wrap" style="margin-bottom:10px"><span class="chip '+(pub?'ok':'warn')+'">'+(pub?'פורסם — העובדים רואים את הסידור':'טיוטה — העובדים עדיין לא רואים')+'</span>'+
      '<div class="row"><button class="btn sec sm" data-act="exportWeek">שלח כטקסט</button><button class="btn sm '+(pub?'ghost':'ok')+'" data-act="publish">'+(pub?'בטל פרסום':'פרסם באפליקציה')+'</button></div></div><div class="muted" style="margin:-4px 0 10px">פרסום באפליקציה — העובדים רואים את המשמרות שלהם בתוך האפליקציה. שליחה כטקסט — העתקה/וואטסאפ בלבד, לא משנה מה העובדים רואים.</div>';
   h+='<div class="pills">';
-  for(let i=0;i<7;i++){const d=addDays(ws,i);h+='<button class="pill'+(d===date?' on':'')+(d===t?' today':'')+'" data-act="day" data-date="'+d+'">'+DOW[i]+'<b>'+parse(d).getDate()+'</b>'+shiftsOn(d).length+' משמרות</button>'}
+  for(let i=0;i<7;i++){const d=addDays(ws,i);if(!shown(d))continue;h+='<button class="pill'+(d===date?' on':'')+(d===t?' today':'')+'" data-act="day" data-date="'+d+'">'+DOW[i]+'<b>'+parse(d).getDate()+'</b><span class="dot '+dayStatus(d)+'"></span>'+shiftsOn(d).length+' משמרות</button>'}
+  const board=(S.bMode||'board')==='board';
   h+='</div><div class="card"><div class="row between wrap"><div><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="muted">פתיחה '+hr.open+' · סגירה '+hr.close+(hr.custom?' (מותאם)':'')+'</span>'+(hr.closed?' <span class="chip warn">המקום סגור ביום הזה</span>':'')+'</div>'+
-     '<div class="row wrap"><button class="btn ghost sm" data-act="dayHours">שעות היום</button><button class="btn ghost sm" data-act="copyDay">העתק מיום…</button><button class="btn sec sm" data-act="exportDay">שלח יום כטקסט</button></div></div></div>';
+     '<div class="seg2"><button class="'+(board?'on':'')+'" data-act="bMode" data-m="board">לוח</button><button class="'+(board?'':'on')+'" data-act="bMode" data-m="list">רשימה</button></div></div>'+
+     '<div class="row wrap" style="margin-top:10px"><button class="btn sm" data-act="autoDay">✨ פזר יום</button><button class="btn sec sm" data-act="autoWeek">✨ פזר שבוע</button>'+((S.lastAuto&&S.lastAuto.some(id=>D('shifts')[id]))?'<button class="btn ghost sm" data-act="autoUndo">↩ בטל פיזור</button>':'')+
+     '<button class="btn ghost sm" data-act="dayHours">שעות היום</button><button class="btn ghost sm" data-act="copyDay">העתק מיום…</button><button class="btn ghost sm" data-act="clearDay">🧹 נקה יום</button><button class="btn sec sm" data-act="exportDay">שלח יום כטקסט</button></div></div>';
+  if(board){
+    if(hr.closed)return h+'<div class="card empty">המקום סגור ביום הזה — אין צורך בשיבוץ. לפתיחה חריגה: "שעות היום".</div>';
+    return h+boardHtml(date,hr);
+  }
   if(!list.length)h+='<div class="card empty">אין משמרות ליום הזה. לחץ על "+ משמרת".</div>';
   list.forEach(s=>{
     const w=warningsOf(s),lvl=w.some(x=>x.lvl==='b')?'b':w.length?'w':'';
@@ -517,8 +719,9 @@ function empGroups(roleId,date,from,to){
   });
   return g;
 }
-function shiftModal(id,date){
-  const s=id?D('shifts')[id]:{date,from:'open',to:'close',roleId:'',empId:''};
+function shiftModal(id,date,pre){
+  pre=pre||{};
+  const s=id?D('shifts')[id]:{date,from:pre.from||'open',to:pre.to||'close',roleId:pre.roleId||'',empId:''};
   S.sm={id,date:s.date,filter:'ok'};
   const roles=sortedRoles();
   openModal('<h2>'+(id?'עריכת משמרת':'משמרת חדשה')+' · '+fmtDay(s.date)+'</h2>'+
@@ -554,9 +757,10 @@ function credsModal(list){
     list.map((c,i)=>'<div class="row between" style="padding:7px 0;border-bottom:1px solid var(--line)"><div class="grow"><b>'+esc(c.name)+'</b><div class="muted">'+esc(c.phone)+' · <b style="letter-spacing:2px">'+esc(c.pin)+'</b></div></div><button class="btn sec sm" data-act="sendPin" data-i="'+i+'">וואטסאפ</button></div>').join('')+
     '<div class="row" style="margin-top:12px"><button class="btn sec grow" data-act="copyCreds">העתק הכול</button><button class="btn ghost" data-act="closeModal">סגור</button></div>');
 }
+const boldHtml=t=>esc(t).replace(/\*([^*\n]+)\*/g,'<b>$1</b>');
 function exportModal(title,text){
   S.exp=text;
-  openModal('<h2>'+esc(title)+'</h2><pre class="exp">'+esc(text)+'</pre><div class="row" style="margin-top:12px"><button class="btn ok grow" data-act="shareWa">שלח בוואטסאפ</button><button class="btn sec" data-act="copyTxt">העתק</button><button class="btn ghost" data-act="closeModal">סגור</button></div>');
+  openModal('<h2>'+esc(title)+'</h2><div class="exp" style="white-space:pre-wrap;line-height:1.7">'+boldHtml(text)+'</div><p class="muted" style="margin:8px 0 0">שם העובד מודגש. "העתק" מדביק הדגשה אמיתית (מייל, Word, Docs); בוואטסאפ ההדגשה נשמרת אוטומטית.</p><div class="row" style="margin-top:12px"><button class="btn ok grow" data-act="shareWa">שלח בוואטסאפ</button><button class="btn sec" data-act="copyTxt">העתק</button><button class="btn ghost" data-act="closeModal">סגור</button></div>');
 }
 
 /* ================= פעולות ================= */
@@ -661,6 +865,37 @@ const A={
     openModal(h+'<div style="height:12px"></div><button class="btn ghost block" data-act="closeModal">סגור</button>');
   },
   /* משמרות */
+  bMode(d){S.bMode=d.m;render()},
+  pickEmp(d){S.pick=S.pick===d.id?null:d.id;render()},
+  laneTap(d){
+    if(S.pick){dropEmp(S.pick,d.role);return}
+    const li=laneInfo(S.bDay,d.role),g=li.gaps[0];
+    shiftModal(null,S.bDay,{roleId:d.role,from:g?tokS(g[0],S.bDay):'open',to:g?tokE(g[1],S.bDay):'close'});
+  },
+  shiftX(d){const s=D('shifts')[d.id];if(!s)return;if(confirm('להסיר את '+empName(s.empId)+' מ'+roleName(s.roleId)+'?'))Store.del('shifts',d.id)},
+  laneSkip(d){if(laneInfo(S.bDay,d.role).shifts.length&&!confirm('יש משמרות בתפקיד הזה. להסתיר אותו בכל זאת?'))return;setSkip(S.bDay,d.role,true)},
+  laneUnskip(d){setSkip(S.bDay,d.role,false)},
+  goLane(d){const el=document.getElementById('lane-'+d.role);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.add('over');setTimeout(()=>el.classList.remove('over'),1200)}},
+  autoDay(){
+    if(hoursFor(S.bDay).closed)return toast('המקום סגור ביום הזה');
+    const r=autoFill([S.bDay]);if(!r.created.length&&!r.missing.length)return toast('הכול כבר מכוסה ✓');
+    if(!r.created.length)return autoReport(r,'היום');
+    autoReport(r,'היום');
+  },
+  autoWeek(){
+    if(!confirm('לפזר אוטומטית את כל השבוע '+weekLabel(S.bWeek)+'? המשמרות הקיימות לא יימחקו, והאפליקציה רק תוסיף על מה שחסר.'))return;
+    const ds=[];for(let i=0;i<7;i++)ds.push(addDays(S.bWeek,i));
+    const r=autoFill(ds);if(!r.created.length&&!r.missing.length)return toast('כל השבוע כבר מכוסה ✓');
+    autoReport(r,'השבוע');
+  },
+  autoUndo(){
+    const ids=(S.lastAuto||[]).filter(id=>D('shifts')[id]);ids.forEach(id=>Store.del('shifts',id));S.lastAuto=null;closeModal();toast('הפיזור האחרון בוטל ('+ids.length+')');
+  },
+  clearDay(){
+    const l=shiftsOn(S.bDay);if(!l.length)return toast('אין משמרות ליום הזה');
+    if(!confirm('למחוק את כל '+l.length+' המשמרות של '+fmtDay(S.bDay)+'?'))return;
+    l.forEach(s=>Store.del('shifts',s.id));
+  },
   shiftNew(){shiftModal(null,S.bDay)},
   shiftEdit(d){shiftModal(d.id,D('shifts')[d.id].date)},
   shiftSave(){
@@ -676,7 +911,7 @@ const A={
   publish(){
     const ws=S.bWeek,pub=weekPublished(ws);
     if(!confirm(pub?'לבטל פרסום? העובדים לא יראו את הסידור.':'לפרסם את הסידור לשבוע '+weekLabel(ws)+'? העובדים יראו אותו מיד.'))return;
-    Store.set('weeks',ws,{published:!pub,at:Date.now()});toast(pub?'הפרסום בוטל':'הסידור פורסם ✓');
+    Store.set('weeks',ws,Object.assign({},D('weeks')[ws]||{},{published:!pub,at:Date.now()}));toast(pub?'הפרסום בוטל':'הסידור פורסם ✓');
   },
   dayHours(){
     const date=S.bDay,h=hoursFor(date);
@@ -702,7 +937,12 @@ const A={
   exportWeek(){const t=weekText(S.bWeek);if(!t)return toast('אין משמרות בשבוע הזה');exportModal('שיתוף שבוע '+weekLabel(S.bWeek),t)},
   shareWa(){window.open('https://wa.me/?text='+encodeURIComponent(S.exp),'_blank')},
   async copyTxt(){
-    try{await navigator.clipboard.writeText(S.exp)}catch(e){const t=document.createElement('textarea');t.value=S.exp;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}
+    try{
+      if(window.ClipboardItem&&navigator.clipboard.write){
+        const html='<div dir="rtl" style="white-space:pre-wrap">'+boldHtml(S.exp)+'</div>';
+        await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([S.exp],{type:'text/plain'})})]);
+      }else await navigator.clipboard.writeText(S.exp);
+    }catch(e){const t=document.createElement('textarea');t.value=S.exp;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}
     toast('הועתק ✓');
   },
   /* עובדים */
@@ -813,6 +1053,7 @@ const C={ /* שינוי ערך בשדה */
     map[el.dataset.w]=Object.assign({},map[el.dataset.w],{[el.dataset.k]:el.value});
     Store.set('settings','hours',{map});
   },
+  trayF(el){S.trayF=el.value;if(document.activeElement)document.activeElement.blur();render()},trayRole(el){S.trayRole=el.value;if(document.activeElement)document.activeElement.blur();render()},
   smRole(){refreshEmpSelect()},smTime(){refreshEmpSelect()},smFilter(el){S.sm.filter=el.value;refreshEmpSelect('')}
 };
 document.addEventListener('click',ev=>{
@@ -854,8 +1095,52 @@ function render(){
     if(!me()){app.innerHTML=viewLogin();return}
   }
   if(!me()){A.logout();return}
+  const tr0=$('#tray'),sl=tr0?tr0.scrollLeft:0,st0=tr0?tr0.scrollTop:0;
   app.innerHTML=viewShell();
+  const tr1=$('#tray');if(tr1){tr1.scrollLeft=sl;tr1.scrollTop=st0}
 }
+
+/* ---- גרירה (עכבר + לחיצה ארוכה במגע) ---- */
+let DR=null,DR_SUP=0;
+function drStart(){
+  const e=emp(DR.id);if(!e){DR=null;return}
+  DR.on=true;document.body.style.userSelect='none';
+  const g=document.createElement('div');g.className='ghost-ec';g.textContent=e.name;document.body.appendChild(g);DR.g=g;drMove(DR.x,DR.y);
+  document.querySelectorAll('.lane').forEach(l=>l.classList.add((e.roles||[]).includes(l.dataset.lane)?'target':'no'));
+}
+function drMove(x,y){if(!DR||!DR.g)return;DR.g.style.left=x+'px';DR.g.style.top=y+'px';
+  document.querySelectorAll('.lane.over').forEach(l=>l.classList.remove('over'));
+  const t=document.elementFromPoint(x,y),l=t&&t.closest&&t.closest('.lane');if(l)l.classList.add('over')}
+function drEnd(drop,x,y){
+  if(!DR)return;clearTimeout(DR.timer);
+  if(DR.on){
+    const t=document.elementFromPoint(x,y),l=t&&t.closest&&t.closest('.lane');
+    if(DR.g)DR.g.remove();document.body.style.userSelect='';
+    document.querySelectorAll('.lane').forEach(z=>z.classList.remove('over','target','no'));
+    DR_SUP=Date.now();
+    const id=DR.id;DR=null;
+    if(drop&&l)dropEmp(id,l.dataset.lane);else render();
+    return;
+  }
+  DR=null;
+}
+document.addEventListener('pointerdown',ev=>{
+  if(!me()||!me().isManager||ev.button>0)return;
+  const c=ev.target.closest&&ev.target.closest('[data-drag]');if(!c)return;
+  DR={id:c.dataset.drag,x:ev.clientX,y:ev.clientY,on:false,touch:ev.pointerType==='touch'};
+  if(DR.touch)DR.timer=setTimeout(()=>{if(DR&&!DR.on)drStart()},300);
+});
+document.addEventListener('pointermove',ev=>{
+  if(!DR)return;
+  if(!DR.on){const d=Math.hypot(ev.clientX-DR.x,ev.clientY-DR.y);
+    if(DR.touch){if(d>12){clearTimeout(DR.timer);DR=null}}else if(d>6){DR.x=ev.clientX;DR.y=ev.clientY;drStart()}return}
+  drMove(ev.clientX,ev.clientY);
+});
+document.addEventListener('pointerup',ev=>drEnd(true,ev.clientX,ev.clientY));
+document.addEventListener('pointercancel',ev=>{if(DR&&DR.on)drEnd(false,0,0);else DR=null});
+document.addEventListener('touchmove',ev=>{if(DR&&DR.on)ev.preventDefault()},{passive:false});
+document.addEventListener('contextmenu',ev=>{if(ev.target.closest&&ev.target.closest('[data-drag]'))ev.preventDefault()});
+document.addEventListener('click',ev=>{if(Date.now()-DR_SUP<350){ev.stopPropagation();ev.preventDefault()}},true);
 (async function boot(){
   try{
     await Store.init();
