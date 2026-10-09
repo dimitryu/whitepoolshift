@@ -172,7 +172,7 @@ main.wide{max-width:1100px}
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='6.6';
+const APP_VERSION='6.7';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -351,9 +351,8 @@ function warningsOf(s){
   return w;
 }
 function exHours(s){
-  const o=noZero(resolve('open',s.date)),f=s.from==='open'?null:noZero(resolve(s.from,s.date)),t=s.to==='close'?null:noZero(resolve(s.to,s.date));
-  if(s.to==='close'){return f===null?'פתיחה-סגירה':f+'-סגירה'}
-  return (f===null?o:f)+'-'+t;
+  const f=noZero(resolve(s.from,s.date)),t=noZero(resolve(s.to,s.date));
+  return f+'-'+t;
 }
 function empLine(date,list){
   const iv=list.map(x=>({a:toMin(resolve(x.from,date)),b:toMin(resolve(x.to,date)),n:x.evId?'יום הולדת 🎁':roleName(x.roleId)}));
@@ -852,7 +851,7 @@ function shiftModal(id,date,pre){
    '<label class="f">תפקיד</label><select id="sm-role" data-chg="smRole"'+(S.sm.evId?' disabled':'')+'><option value="">בחר תפקיד…</option>'+roles.map(r=>'<option value="'+r.id+'"'+(r.id===s.roleId?' selected':'')+'>'+esc(r.name)+'</option>').join('')+'</select>'+
    '<div class="two"><div><label class="f">משעה</label><select id="sm-from" data-chg="smTime">'+optsHtml(fromOptsFor(s.date),normTok(s.from,s.date,false),fmtT)+'</select></div><div><label class="f">עד שעה</label><select id="sm-to" data-chg="smTime">'+optsHtml(toOptsFor(s.date),normTok(s.to,s.date,true),fmtT)+'</select></div></div>'+
    '<label class="f">הצג עובדים</label><select id="sm-filter" data-chg="smFilter"></select>'+
-   '<label class="f">עובד</label><select id="sm-emp"></select>'+
+   '<label class="f">עובד</label><select id="sm-emp" data-chg="smEmp"></select>'+
    (sw&&sw[1]-sw[0]>=60?'<div class="card" style="margin-top:12px;padding:10px"><b>פיצול בין מתקנים</b><div class="muted">העובד עובד בתפקיד הזה עד שעה מסוימת, ואחר כך בתפקיד אחר.</div><div class="two"><div><label class="f">עד שעה</label><select id="sm-split">'+optsHtml(timeOpts(sw[0]+15,sw[1]-15),mmT(Math.round((sw[0]+sw[1])/30)*15))+'</select></div><div><label class="f">ואז בתפקיד</label><select id="sm-role2"><option value="">בחר…</option>'+roles.filter(r=>!r.bday).map(r=>'<option value="'+r.id+'">'+esc(r.name)+'</option>').join('')+'</select></div></div><button class="btn sec sm" style="margin-top:8px" data-act="shiftSplit">פצל</button></div>':'')+
    '<div style="height:14px"></div><div class="row"><button class="btn grow" data-act="shiftSave">שמור</button>'+(id?'<button class="btn danger" data-act="shiftDel">מחק</button>':'')+'<button class="btn ghost" data-act="closeModal">ביטול</button></div>');
   if(s.empId&&s.roleId){const g=empGroups(s.roleId,s.date,s.from,s.to);EMP_GROUPS.forEach(([k])=>{if(g[k].some(e=>e.id===s.empId))S.sm.filter=k})}
@@ -1234,7 +1233,17 @@ const C={ /* שינוי ערך בשדה */
   sdClosed(el){['sd-open','sd-close'].forEach(i=>{const x=$('#'+i);if(x)x.disabled=el.checked})},
   dhClosed(el){['dh-open','dh-close'].forEach(i=>{const x=$('#'+i);if(x)x.disabled=el.checked})},
   trayF(el){S.trayF=el.value;if(document.activeElement)document.activeElement.blur();render()},trayRole(el){S.trayRole=el.value;if(document.activeElement)document.activeElement.blur();render()},
-  smRole(){refreshEmpSelect()},smTime(){refreshEmpSelect()},smFilter(el){S.sm.filter=el.value;refreshEmpSelect('')}
+  smRole(){refreshEmpSelect()},smTime(){refreshEmpSelect()},smEmp(el){
+    if(S.sm.id||!el.value)return;const empId=el.value,date=S.sm.date;
+    const f=toMin(resolve($('#sm-from').value,date)),t=toMin(resolve($('#sm-to').value,date));
+    const aw=availWin(empId,date),rng=aw?[Math.max(f,aw[0]),Math.min(t,aw[1])]:[f,t];if(rng[1]-rng[0]<15)return;
+    const mine=shiftsOn(date).filter(x=>x.empId===empId).map(ivOf),gp=gapsOf(mine,rng).filter(g=>g[1]-g[0]>=15);if(!gp.length)return;
+    let seg=gp[0];seg=trimSeg(mine,seg,maxMin(empId))||seg;
+    const nf=tokS(seg[0],date),nt=tokE(seg[1],date),of=$('#sm-from').value,ot=$('#sm-to').value;
+    $('#sm-from').value=nf;if($('#sm-from').value!==nf)$('#sm-from').value=of;
+    $('#sm-to').value=nt;if($('#sm-to').value!==nt)$('#sm-to').value=ot;
+    if($('#sm-from').value!==of||$('#sm-to').value!==ot)toast('השעות הותאמו לזמינות ולמגבלת השעות של '+empName(empId));
+  },smFilter(el){S.sm.filter=el.value;refreshEmpSelect('')}
 };
 document.addEventListener('click',ev=>{
   const el=ev.target.closest('[data-act]');if(!el)return;
