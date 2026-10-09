@@ -172,7 +172,7 @@ main.wide{max-width:1100px}
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='6.9.1';
+const APP_VERSION='6.9.2';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -1287,6 +1287,7 @@ function render(){
   }
   if(!me()){A.logout();return}
   if(me()&&me().isManager&&Store.mode&&!vals('roles').some(r=>r.bday)&&!S.bdayTried&&Object.keys(D('roles')||{}).length>=0&&S.userId){S.bdayTried=1;Store.set('roles','bday',{name:'יום הולדת',order:999,bday:true,combine:true})}
+  if(me()&&me().isManager&&Store.mode&&S.userId&&!S.m8&&vals('employees').length&&!(D('settings')||{}).migr8){S.m8=1;vals('employees').forEach(e=>{if(+e.maxHours!==8)Store.set('employees',e.id,Object.assign({},e,{maxHours:8}))});Store.set('settings','migr8',{done:true,at:Date.now()})}
   const tr0=$('#tray'),sl=tr0?tr0.scrollLeft:0,st0=tr0?tr0.scrollTop:0,tb0=$('.tray'),tbs=tb0?tb0.scrollTop:0;
   app.innerHTML=viewShell();
   const tr1=$('#tray');if(tr1){tr1.scrollLeft=sl;tr1.scrollTop=st0}const tb1=$('.tray');if(tb1)tb1.scrollTop=tbs;
