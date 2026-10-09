@@ -170,7 +170,7 @@ main.wide{max-width:1100px}
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='6.3';
+const APP_VERSION='6.4';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -307,7 +307,7 @@ const emp=id=>D('employees')[id];
 const role=id=>D('roles')[id];
 const empName=id=>emp(id)?emp(id).name:'(עובד נמחק)';
 const roleName=id=>role(id)?role(id).name:'(תפקיד נמחק)';
-const sortedRoles=()=>vals('roles').sort((a,b)=>(a.order||0)-(b.order||0)||a.name.localeCompare(b.name,'he'));
+const sortedRoles=()=>vals('roles').sort((a,b)=>a.name.localeCompare(b.name,'he'));
 const activeEmps=()=>vals('employees').filter(e=>e.active!==false).sort((a,b)=>a.name.localeCompare(b.name,'he'));
 function availDoc(empId,ws){return D('availability')[ws+'_'+empId]}
 function availState(empId,date){
@@ -488,7 +488,7 @@ function trayList(date){
   else if(f==='sub')l=l.filter(x=>x.st!=='off'); /* כולל שלא הגישו */
   const rank={full:0,part:1,none:2,off:3};
   const asg=e=>shiftsOn(date).some(s=>s.empId===e.id);
-  return l.sort((a,b)=>(asg(a.e)-asg(b.e))||rank[a.st]-rank[b.st]||a.e.name.localeCompare(b.e.name,'he'));
+  return l.sort((a,b)=>a.e.name.localeCompare(b.e.name,'he'));
 }
 function boardHtml(date,hr){
   const rr=reqRoles(date),sk=skipOf(date),allShifts=shiftsOn(date);
