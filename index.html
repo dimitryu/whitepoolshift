@@ -172,7 +172,7 @@ main.wide{max-width:1100px}
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='6.9';
+const APP_VERSION='6.9.1';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -727,7 +727,7 @@ function viewBuild(){
   h+='</div><div class="card"><div class="row between wrap"><div><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="muted">פתיחה '+hr.open+' · סגירה '+hr.close+(hr.custom?' (מותאם)':'')+'</span>'+(hr.label?' <span class="chip">'+esc(hr.label)+'</span>':'')+(hr.closed?' <span class="chip warn">המקום סגור ביום הזה</span>':'')+'</div>'+
      '<div class="seg2"><button class="'+(board?'on':'')+'" data-act="bMode" data-m="board">לוח</button><button class="'+(board?'':'on')+'" data-act="bMode" data-m="list">רשימה</button></div></div>'+
      '<div class="row wrap" style="margin-top:10px"><button class="btn sm" data-act="autoDay">✨ פזר יום</button><button class="btn sec sm" data-act="autoWeek">✨ פזר שבוע</button>'+
-     '<button class="btn ghost sm" data-act="dayHours">שעות היום</button><button class="btn ghost sm" data-act="copyDay">העתק מיום…</button><button class="btn ghost sm" data-act="clearDay">🧹 נקה יום</button><button class="btn sec sm" data-act="exportDay">שלח יום כטקסט</button></div></div>';
+     '<button class="btn ghost sm" data-act="dayHours">שעות היום</button><button class="btn ghost sm" data-act="copyDay">העתק מיום…</button><button class="btn ghost sm" data-act="clearDay">🧹 נקה יום</button></div></div>';
   if(board){
     if(hr.closed)return h+'<div class="card empty">המקום סגור ביום הזה — אין צורך בשיבוץ. לפתיחה חריגה: "שעות היום".</div>';
     return h+boardHtml(date,hr);
