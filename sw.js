@@ -1,4 +1,4 @@
-const CACHE='wp-shifts-v6.4';
+const CACHE='wp-shifts-v6.5';
 const ASSETS=['./','./index.html','./manifest.json','./firebase-config.js','./icons/icon-192.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))));self.clients.claim()});
