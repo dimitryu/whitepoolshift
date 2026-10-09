@@ -172,7 +172,7 @@ main.wide{max-width:1100px}
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='6.8';
+const APP_VERSION='6.9';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -329,9 +329,7 @@ function describeAvail(a){
 }
 const shiftsOn=date=>vals('shifts').filter(s=>s.date===date).sort((a,b)=>
   toMin(resolve(a.from,date))-toMin(resolve(b.from,date))||toMin(resolve(a.to,date))-toMin(resolve(b.to,date))||empName(a.empId).localeCompare(empName(b.empId),'he'));
-const maxMin=id=>{const e=emp(id);return Math.round((e&&e.maxHours?+e.maxHours:10)*60)}; /* מקסימום שעות ביום לעובד (ברירת מחדל 10) */
-const maxCombo=id=>{const e=emp(id);return e&&e.maxCombo?+e.maxCombo:2}; /* מקסימום תפקידים בו-זמנית */
-function peakOverlap(list,seg){const pts=[...new Set([seg[0],seg[1]].concat(list.flatMap(x=>[x[0],x[1]]).filter(v=>v>seg[0]&&v<seg[1])))].sort((a,b)=>a-b);let m=0;for(let i=0;i<pts.length-1;i++){const mid=(pts[i]+pts[i+1])/2;m=Math.max(m,list.filter(x=>x[0]<=mid&&x[1]>mid).length)}return m}
+const maxMin=id=>{const e=emp(id);return Math.round((e&&e.maxHours?+e.maxHours:8)*60)}; /* מקסימום שעות ביום לעובד (ברירת מחדל 10) */
 const unionMin=l=>mergeIv(l).reduce((a,x)=>a+x[1]-x[0],0);
 function trimSeg(all,seg,lim){const tot=unionMin(all.concat([seg]));if(tot<=lim)return seg;const t=[seg[0],Math.floor((seg[1]-(tot-lim))/15)*15];return t[1]-t[0]>=30?t:null}
 function warningsOf(s){
@@ -349,7 +347,7 @@ function warningsOf(s){
     const f2=toMin(resolve(o.from,o.date)),t2=toMin(resolve(o.to,o.date));
     if(f1<t2&&f2<t1&&!(role(s.roleId)&&role(s.roleId).combine&&role(o.roleId)&&role(o.roleId).combine))w.push({lvl:'b',t:'חופפת למשמרת אחרת (התפקידים לא מוגדרים "ניתן לשילוב")'});
   });
-  {const lim=maxMin(s.empId),load=unionMin(vals('shifts').filter(o=>o.date===s.date&&o.empId===s.empId&&o.id!==s.id).map(ivOf).concat([[f1,t1]]));{const mine=vals('shifts').filter(o=>o.date===s.date&&o.empId===s.empId&&o.id!==s.id).map(ivOf),pk=peakOverlap(mine,[f1,t1])+1;if(pk>maxCombo(s.empId))w.push({lvl:'b',t:'עובד/ת בו-זמנית ב-'+pk+' תפקידים (מותר '+maxCombo(s.empId)+')'})}
+  {const lim=maxMin(s.empId),load=unionMin(vals('shifts').filter(o=>o.date===s.date&&o.empId===s.empId&&o.id!==s.id).map(ivOf).concat([[f1,t1]]));
     if(load>lim)w.push({lvl:'b',t:'עבודה מעל השעות המותרות: '+mmT(load)+' שעות ביום (מותר '+(lim/60)+')'})}
   return w;
 }
@@ -579,7 +577,6 @@ function dropEmp(empId,roleId,evId){
   let seg=null;
   const tryIn=ranges=>{for(const g of ranges){const inter=[Math.max(g[0],aw[0]),Math.min(g[1],aw[1])];if(inter[1]<=inter[0])continue;for(const f of gapsOf(busy,inter)){if(f[1]-f[0]>=15){seg=f;return true}}}return false};
   if(!tryIn(li.gaps)&&!tryIn([ev?li.win:aw])){return toast(e.name+' כבר משובץ/ת בכל השעות הזמינות (אפשר לשלב רק תפקידים המוגדרים "ניתן לשילוב")')}
-  {const pk=peakOverlap(all,seg)+1;if(pk>maxCombo(empId)&&!confirm(e.name+' יעבוד/תעבוד בו-זמנית ב-'+pk+' תפקידים (מותר '+maxCombo(empId)+'). לשבץ בכל זאת?'))return}
   const lim=maxMin(empId),tot=unionMin(all.concat([seg]));let cut=false;
   if(tot>lim){
     const t=trimSeg(all,seg,lim);
@@ -614,7 +611,6 @@ function autoFill(dates){
         const busy=mine.filter(s=>!(relaxed&&comb(rid)&&comb(s.roleId))).map(ivOf);
         gapsOf(busy,inter).forEach(seg0=>{
           const seg=trimSeg(all,seg0,maxMin(e.id));if(!seg)return;
-          if(relaxed&&peakOverlap(all,seg)+1>maxCombo(e.id))return;
           const len=seg[1]-seg[0];if(len<Math.min(90,glen))return;
           const sc=(seg[0]===g[0]?1e6:0)+Math.min(len,glen)*100-e.roles.length*8-(wm[e.id]||0)/60;
           if(!best||sc>best.sc)best={sc,e,seg};
@@ -635,13 +631,12 @@ function autoFill(dates){
         const have=day().filter(s=>s.roleId===r.id&&!s.evId).map(ivOf);
         const gaps=gapsOf(have.concat(virt),win);if(!gaps.length)break;
         const g=gaps[0],glen=g[1]-g[0];
-        const best=relaxedPass?(comb(r.id)?choose(r.id,g,glen,null,true):null):choose(r.id,g,glen,null,false);
-        if(!best){if(!relaxedPass)break;virt.push(g);missing.push({date,roleId:r.id,gap:g});continue}
+        const best=choose(r.id,g,glen,null,false);
+        if(!best){virt.push(g);missing.push({date,roleId:r.id,gap:g});continue}
         place(best,r.id);
       }
     };
     roles.forEach(r=>fillRole(r,false));
-    roles.forEach(r=>fillRole(r,true));
     const bid=bdayId();
     evsOn(date).forEach(ev=>{
       const evWin=[toMin(resolve(ev.from||'open',date)),toMin(resolve(ev.to||'close',date))],need=ev.need||2;
@@ -650,7 +645,7 @@ function autoFill(dates){
         const mine=day().filter(s=>s.evId===ev.id);
         const gaps=gapsNeed(mine.map(ivOf).concat(virt),evWin,need);if(!gaps.length)break;
         const g=gaps[0],glen=g[1]-g[0],ex=new Set(mine.map(s=>s.empId));
-        const best=choose(bid,g,glen,ex,false)||choose(bid,g,glen,ex,true);
+        const best=choose(bid,g,glen,ex,false);
         if(!best){for(let i=0;i<need;i++)virt.push(g);missing.push({date,roleId:bid,label:'יום הולדת '+ev.n,gap:g});continue}
         place(best,bid,ev.id);
       }
@@ -731,7 +726,7 @@ function viewBuild(){
   const board=(S.bMode||'board')==='board';
   h+='</div><div class="card"><div class="row between wrap"><div><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="muted">פתיחה '+hr.open+' · סגירה '+hr.close+(hr.custom?' (מותאם)':'')+'</span>'+(hr.label?' <span class="chip">'+esc(hr.label)+'</span>':'')+(hr.closed?' <span class="chip warn">המקום סגור ביום הזה</span>':'')+'</div>'+
      '<div class="seg2"><button class="'+(board?'on':'')+'" data-act="bMode" data-m="board">לוח</button><button class="'+(board?'':'on')+'" data-act="bMode" data-m="list">רשימה</button></div></div>'+
-     '<div class="row wrap" style="margin-top:10px"><button class="btn sm" data-act="autoDay">✨ פזר יום</button><button class="btn sec sm" data-act="autoWeek">✨ פזר שבוע</button>'+((S.lastAuto&&S.lastAuto.some(id=>D('shifts')[id]))?'<button class="btn ghost sm" data-act="autoUndo">↩ בטל פיזור</button>':'')+
+     '<div class="row wrap" style="margin-top:10px"><button class="btn sm" data-act="autoDay">✨ פזר יום</button><button class="btn sec sm" data-act="autoWeek">✨ פזר שבוע</button>'+
      '<button class="btn ghost sm" data-act="dayHours">שעות היום</button><button class="btn ghost sm" data-act="copyDay">העתק מיום…</button><button class="btn ghost sm" data-act="clearDay">🧹 נקה יום</button><button class="btn sec sm" data-act="exportDay">שלח יום כטקסט</button></div></div>';
   if(board){
     if(hr.closed)return h+'<div class="card empty">המקום סגור ביום הזה — אין צורך בשיבוץ. לפתיחה חריגה: "שעות היום".</div>';
@@ -878,8 +873,7 @@ function empModal(id){
     '<label class="f">שם מלא</label><input type="text" id="em-name" value="'+esc(e.name)+'">'+
     '<label class="f">טלפון (לכניסה)</label><input type="tel" id="em-phone" inputmode="tel" value="'+esc(phoneOf(id))+'">'+(sec&&sec.pin?'<label class="f">קוד כניסה</label><div class="row wrap"><b style="letter-spacing:4px;font-size:20px">'+esc(sec.pin)+'</b><button class="btn sec sm" data-act="empPinSend" data-id="'+id+'">שלח בוואטסאפ</button><button class="btn ghost sm" data-act="empPinReset" data-id="'+id+'">אפס קוד</button></div>':(sec&&sec.selfSet?'<label class="f">קוד כניסה</label><div class="row wrap"><span class="muted">העובד החליף את הקוד בעצמו</span><button class="btn ghost sm" data-act="empPinReset" data-id="'+id+'">אפס קוד</button></div>':''))+
     '<label class="f">תפקידים שהעובד יכול לעבוד בהם</label><div class="checks"><label style="font-weight:800"><input type="checkbox" id="em-allroles" data-chg="emAll"'+(sortedRoles().length&&sortedRoles().every(r=>(e.roles||[]).includes(r.id))?' checked':'')+'> כל התפקידים</label></div><div class="checks" style="margin-top:4px">'+sortedRoles().map(r=>'<label><input type="checkbox" class="em-role" data-chg="emOne" value="'+r.id+'"'+((e.roles||[]).includes(r.id)?' checked':'')+'>'+esc(r.name)+'</label>').join('')+'</div>'+
-    '<label class="f">מקסימום שעות עבודה ביום</label><select id="em-max">'+(()=>{const cur=+e.maxHours||10;let o='';for(let h=4;h<=16;h+=0.5)o+='<option value="'+h+'"'+(h===cur?' selected':'')+'>'+h+' שעות</option>';return o})()+'</select>'+
-    '<label class="f">מקסימום תפקידים בו-זמנית (בתפקידים הניתנים לשילוב)</label><select id="em-combo">'+[1,2,3,4].map(n=>'<option value="'+n+'"'+(n===(+e.maxCombo||2)?' selected':'')+'>'+n+'</option>').join('')+'</select>'+
+    '<label class="f">מקסימום שעות עבודה ביום</label><select id="em-max">'+(()=>{const cur=+e.maxHours||8;let o='';for(let h=4;h<=16;h+=0.5)o+='<option value="'+h+'"'+(h===cur?' selected':'')+'>'+h+' שעות</option>';return o})()+'</select>'+
     '<div class="checks" style="margin-top:12px"><label><input type="checkbox" id="em-mgr"'+(e.isManager?' checked':'')+'> מנהל/ת (בונה סידור)</label>'+(id?'<label><input type="checkbox" id="em-active"'+(e.active!==false?' checked':'')+'> פעיל/ה</label>':'')+'</div>'+
     '<div style="height:14px"></div><div class="row"><button class="btn grow" data-act="empSave">שמור</button><button class="btn ghost" data-act="closeModal">ביטול</button></div>');
 }
@@ -1167,7 +1161,7 @@ const A={
       if(uid)Store.set('users',uid,{empId:id,isManager:false,active:false}); /* חשבון ישן — מושבת */
       uid=newCred.uid;Store.set('secrets',id,{phone,pin:newCred.pin,v:1});
     }
-    Store.set('employees',id,Object.assign({},old,{name,roles,isManager,active,maxHours:+$('#em-max').value||10,maxCombo:+$('#em-combo').value||2,uid:uid||null}));
+    Store.set('employees',id,Object.assign({},old,{name,roles,isManager,active,maxHours:+$('#em-max').value||8,uid:uid||null}));
     if(uid)Store.set('users',uid,{empId:id,isManager,active});
     if(newCred)credsModal([{name,phone,pin:newCred.pin}]);else closeModal();
   },
