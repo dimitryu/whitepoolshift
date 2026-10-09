@@ -172,7 +172,7 @@ main.wide{max-width:1100px}
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='6.5';
+const APP_VERSION='6.6';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -359,9 +359,12 @@ function empLine(date,list){
   const iv=list.map(x=>({a:toMin(resolve(x.from,date)),b:toMin(resolve(x.to,date)),n:x.evId?'יום הולדת 🎁':roleName(x.roleId)}));
   const pts=[...new Set(iv.flatMap(x=>[x.a,x.b]))].sort((x,y)=>x-y),sl=[];
   for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];const ns=[...new Set(iv.filter(x=>x.a<=a&&x.b>=b).map(x=>x.n))].sort((x,y)=>x.localeCompare(y,'he'));if(!ns.length)continue;const k=ns.join(' + '),l=sl[sl.length-1];if(l&&l.k===k)l.b=b;else sl.push({a,b,k})}
-  const first=pts[0],last=pts[pts.length-1];
-  const pre=exHours({date,from:tokS(first,date),to:tokE(last,date)});
-  return {start:first,name:empName(list[0].empId),line:pre+' *'+empName(list[0].empId)+'* '+sl.map((x,i)=>(i?'ואז ':'')+x.k+(i<sl.length-1?' עד '+mmT(x.b):'')).join(' ')};
+  const blocks=[];sl.forEach(x=>{const b=blocks[blocks.length-1];if(b&&b.end===x.a){b.sl.push(x);b.end=x.b}else blocks.push({start:x.a,end:x.b,sl:[x]})});
+  const seq=sl2=>sl2.map((x,i)=>(i?'ואז ':'')+x.k+(i<sl2.length-1?' עד '+mmT(x.b):'')).join(' ');
+  const hrs=b=>exHours({date,from:tokS(b.start,date),to:tokE(b.end,date)});
+  const nm=empName(list[0].empId);
+  const line=hrs(blocks[0])+' *'+nm+'* '+seq(blocks[0].sl)+blocks.slice(1).map(b=>' · '+hrs(b)+' '+seq(b.sl)).join('');
+  return {start:pts[0],name:nm,line};
 }
 function dayText(date){
   const evs=evsOn(date),sh=shiftsOn(date),by={};
@@ -574,15 +577,17 @@ function dropEmp(empId,roleId,evId){
   let seg=null;
   const tryIn=ranges=>{for(const g of ranges){const inter=[Math.max(g[0],aw[0]),Math.min(g[1],aw[1])];if(inter[1]<=inter[0])continue;for(const f of gapsOf(busy,inter)){if(f[1]-f[0]>=15){seg=f;return true}}}return false};
   if(!tryIn(li.gaps)&&!tryIn([ev?li.win:aw])){return toast(e.name+' כבר משובץ/ת בכל השעות הזמינות (אפשר לשלב רק תפקידים המוגדרים "ניתן לשילוב")')}
-  const lim=maxMin(empId),tot=unionMin(all.concat([seg]));
-  if(tot>lim&&!confirm(e.name+' יעבוד/תעבוד '+mmT(tot)+' שעות ביום, מעל המותר ('+(lim/60)+' שעות). לשבץ בכל זאת?')){
-    const t=trimSeg(all,seg,lim);if(!t||!confirm('לשבץ רק עד השעה המותרת ('+mmT(t[0])+'–'+mmT(t[1])+')?'))return;seg=t;
+  const lim=maxMin(empId),tot=unionMin(all.concat([seg]));let cut=false;
+  if(tot>lim){
+    const t=trimSeg(all,seg,lim);
+    if(t){seg=t;cut=true}
+    else if(!confirm(e.name+' כבר השלים/ה '+mmT(unionMin(all))+' שעות ביום (מותר '+(lim/60)+'). לשבץ בכל זאת?'))return;
   }
   const id=Store.newId('shifts');
   if(!ev)setSkip(date,roleId,false);
   const o={date,empId,roleId,from:tokS(seg[0],date),to:tokE(seg[1],date)};if(evId)o.evId=evId;
   Store.set('shifts',id,o);
-  S.pick=null;toast(e.name+' ← '+(ev?'יום הולדת '+ev.n:rname)+' '+mmT(seg[0])+'–'+mmT(seg[1])+' · הקש על המשמרת לשינוי שעות');
+  S.pick=null;toast(e.name+' ← '+(ev?'יום הולדת '+ev.n:rname)+' '+mmT(seg[0])+'–'+mmT(seg[1])+(cut?' · קוצר לפי מגבלת השעות של העובד, את השאר אפשר לשבץ למישהו אחר':' · הקש על המשמרת לשינוי שעות'));
 }
 /* פיזור אוטומטי */
 function autoFill(dates){
@@ -712,7 +717,9 @@ function viewBuild(){
   const t=todayIso(),pub=weekPublished(ws),date=S.bDay,hr=hoursFor(date),list=shiftsOn(date);
   let h='<h2>בניית סידור</h2>'+weekBar('bWeek',ws);
   h+='<div class="row between wrap" style="margin-bottom:10px"><span class="chip '+(pub?'ok':'warn')+'">'+(pub?'פורסם — העובדים רואים את הסידור':'טיוטה — העובדים עדיין לא רואים')+'</span>'+
-     '<div class="row"><button class="btn sec sm" data-act="exportWeek">שלח כטקסט</button><button class="btn sm '+(pub?'ghost':'ok')+'" data-act="publish">'+(pub?'בטל פרסום':'פרסם באפליקציה')+'</button></div></div><div class="muted" style="margin:-4px 0 10px">פרסום באפליקציה — העובדים רואים את המשמרות שלהם בתוך האפליקציה. שליחה כטקסט — העתקה/וואטסאפ בלבד, לא משנה מה העובדים רואים.</div>';
+     '<div class="row"><button class="btn sec sm" data-act="exportDay">שלח את היום כטקסט</button><button class="btn sec sm" data-act="exportWeek">שלח שבוע כטקסט</button><button class="btn sm '+(pub?'ghost':'ok')+'" data-act="publish">'+(pub?'בטל פרסום':'פרסם באפליקציה')+'</button></div></div><div class="muted" style="margin:-4px 0 10px">פרסום באפליקציה — העובדים רואים את המשמרות שלהם בתוך האפליקציה. שליחה כטקסט — העתקה/וואטסאפ בלבד, לא משנה מה העובדים רואים.</div>';
+  const badSh=vals('shifts').filter(x=>weekStart(x.date)===ws&&(()=>{const[f,t]=ivOf(x);return !(t>f)})());
+  if(badSh.length)h+='<div class="card" style="border-color:var(--danger,#d33)"><b>⚠ יש '+badSh.length+' משמרות עם טווח שעות שגוי (למשל 9:15–9:15)</b><div class="row" style="margin-top:6px"><button class="btn danger sm" data-act="purgeBad">מחק אותן</button></div></div>';
   h+='<div class="pills">';
   for(let i=0;i<7;i++){const d=addDays(ws,i);if(!shown(d))continue;h+='<button class="pill'+(d===date?' on':'')+(d===t?' today':'')+'" data-act="day" data-date="'+d+'">'+DOW[i]+'<b>'+parse(d).getDate()+'</b>'+(()=>{const st=dayStatus(d);if(hoursFor(d).closed)return '<span class="pc">סגור (חג)</span>';const hh=hoursFor(d);return '<span class="ph">'+hh.open+'–'+hh.close+'</span>'+(st.full?'<span class="pc"><i class="dot ok"></i>'+st.full+' מלא</span>':'')+(st.miss?'<span class="pc"><i class="dot bad"></i>'+st.miss+' חסר</span>':'')+'<span class="pc" style="color:var(--muted)">'+shiftsOn(d).length+' משמרות</span>'})()+'</button>'}
   const board=(S.bMode||'board')==='board';
@@ -1012,6 +1019,7 @@ const A={
     const r=autoFill(ds);if(!r.created.length&&!r.missing.length)return toast('כל השבוע כבר מכוסה ✓');
     autoReport(r,'השבוע');
   },
+  purgeBad(){const ws=S.bWeek;vals('shifts').filter(x=>weekStart(x.date)===ws&&!(()=>{const[f,t]=ivOf(x);return t>f})()).forEach(x=>Store.del?Store.del('shifts',x.id):0);toast('נמחקו');render()},
   autoUndo(){
     const ids=(S.lastAuto||[]).filter(id=>D('shifts')[id]);ids.forEach(id=>Store.del('shifts',id));S.lastAuto=null;closeModal();toast('הפיזור האחרון בוטל ('+ids.length+')');
   },
