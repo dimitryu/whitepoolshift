@@ -172,7 +172,7 @@ main.wide{max-width:1100px}
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='6.10';
+const APP_VERSION='6.10.1';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -887,7 +887,8 @@ function refreshEmpSelect(keep){
   if(keep===undefined)keep=$('#sm-emp').value;
   $('#sm-filter').innerHTML=EMP_GROUPS.map(([k,l])=>'<option value="'+k+'"'+(k===S.sm.filter?' selected':'')+'>'+l+' ('+g[k].length+')</option>').join('');
   const list=g[S.sm.filter];
-  $('#sm-emp').innerHTML='<option value="">'+(!roleId?'בחר תפקיד קודם':list.length?'בחר עובד…':'אין עובדים בקטגוריה הזו')+'</option>'+
+  const extra=keep&&emp(keep)&&!list.some(e=>e.id===keep)?'<option value="'+keep+'" selected>'+esc(emp(keep).name)+' · מחוץ לזמינות/הרשאה (תופיע אזהרה)</option>':'';
+  $('#sm-emp').innerHTML='<option value="">'+(!roleId?'בחר תפקיד קודם':list.length||extra?'בחר עובד…':'אין עובדים בקטגוריה הזו')+'</option>'+extra+
     list.map(e=>{const a=availState(e.id,S.sm.date);const x=S.sm.filter==='part'&&a.s==='on'?' · זמין '+describeAvail(a):'';return '<option value="'+e.id+'"'+(e.id===keep?' selected':'')+'>'+esc(e.name)+esc(x)+'</option>'}).join('');
 }
 function empModal(id){
