@@ -172,7 +172,7 @@ main.wide{max-width:1100px}
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='6.9.2';
+const APP_VERSION='6.10';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -450,7 +450,11 @@ const dayWin=date=>{const h=hoursFor(date);return [toMin(h.open),toMin(h.close)]
 const ivOf=s=>[toMin(resolve(s.from,s.date)),toMin(resolve(s.to,s.date))];
 function mergeIv(l){l=l.filter(x=>x[1]>x[0]).sort((a,b)=>a[0]-b[0]);const o=[];l.forEach(x=>{const k=o[o.length-1];if(k&&x[0]<=k[1])k[1]=Math.max(k[1],x[1]);else o.push(x.slice())});return o}
 function gapsOf(list,win){let cur=win[0];const g=[];mergeIv(list).forEach(x=>{if(x[0]>cur)g.push([cur,Math.min(x[0],win[1])]);cur=Math.max(cur,x[1])});if(cur<win[1])g.push([cur,win[1]]);return g.filter(x=>x[1]>x[0])}
-const skipOf=date=>((D('weeks')[weekStart(date)]||{}).skip||{})[date]||[];
+const skipOf=date=>{const w=D('weeks')[weekStart(date)]||{},st=(w.skip||{})[date]||[],fo=(w.force||{})[date]||[];
+  if(!vals('roles').some(r=>r.evOnly))return st;
+  const hasEv=evsOn(date).length,sh=shiftsOn(date);
+  const ex=vals('roles').filter(r=>r.evOnly&&!r.bday&&!hasEv&&!fo.includes(r.id)&&!sh.some(x=>x.roleId===r.id)).map(r=>r.id);
+  return ex.length?[...new Set(st.concat(ex))]:st};
 function laneInfo(date,roleId,extra){const win=dayWin(date),sh=shiftsOn(date).filter(s=>s.roleId===roleId&&!s.evId);return {shifts:sh,gaps:gapsOf(sh.map(ivOf).concat(extra||[]),win),win}}
 function reqRoles(date){const sk=skipOf(date);return sortedRoles().filter(r=>!r.bday&&!sk.includes(r.id))}
 const bdayId=()=>{const r=vals('roles').find(x=>x.bday);return r?r.id:'bday'};
@@ -488,7 +492,9 @@ function setSkip(date,roleId,on){
   const ws=weekStart(date),w=Object.assign({},D('weeks')[ws]||{}),sk=Object.assign({},w.skip||{});
   let l=(sk[date]||[]).filter(x=>x!==roleId);if(on)l.push(roleId);
   if(l.length)sk[date]=l;else delete sk[date];
-  w.skip=sk;Store.set('weeks',ws,w);
+  w.skip=sk;
+  {const fc=Object.assign({},w.force||{});let f=(fc[date]||[]).filter(x=>x!==roleId);if(!on)f.push(roleId);if(f.length)fc[date]=f;else delete fc[date];w.force=fc}
+ Store.set('weeks',ws,w);
 }
 function trayList(date){
   let l=activeEmps().filter(e=>!e.isManager||(e.roles||[]).length);
@@ -602,7 +608,8 @@ function autoFill(dates){
     const day=()=>work.filter(s=>s.date===date);
     const av={};pool.forEach(e=>{av[e.id]=availWin(e.id,date)});
     /* בוחר את המועמד הטוב ביותר; relaxed = מותר לחפוף רק תפקידים שניתן לשלב */
-    const choose=(rid,g,glen,exclude,relaxed)=>{
+    const MINSEG=180; /* משמרת מינימלית מועדפת: 3 שעות */
+    const choose=(rid,g,glen,exclude,relaxed,full)=>{
       let best=null;
       pool.forEach(e=>{
         if(!e.roles.includes(rid)||!av[e.id]||(exclude&&exclude.has(e.id)))return;
@@ -611,7 +618,7 @@ function autoFill(dates){
         const busy=mine.filter(s=>!(relaxed&&comb(rid)&&comb(s.roleId))).map(ivOf);
         gapsOf(busy,inter).forEach(seg0=>{
           const seg=trimSeg(all,seg0,maxMin(e.id));if(!seg)return;
-          const len=seg[1]-seg[0];if(len<Math.min(90,glen))return;
+          const len=seg[1]-seg[0];if(len<Math.min(MINSEG,glen))return;if(full&&(seg[0]!==g[0]||seg[1]!==g[1]))return;
           const sc=(seg[0]===g[0]?1e6:0)+Math.min(len,glen)*100-e.roles.length*8-(wm[e.id]||0)/60;
           if(!best||sc>best.sc)best={sc,e,seg};
         });
@@ -631,8 +638,24 @@ function autoFill(dates){
         const have=day().filter(s=>s.roleId===r.id&&!s.evId).map(ivOf);
         const gaps=gapsOf(have.concat(virt),win);if(!gaps.length)break;
         const g=gaps[0],glen=g[1]-g[0];
+        /* חלוקה שווה בין שני עובדים כשהפער ארוך */
+        if(glen>=2*MINSEG){
+          const m=g[0]+Math.round(glen/2/15)*15,g1=[g[0],m],g2=[m,g[1]],exA=new Set();let done=false;
+          for(let t=0;t<pool.length&&!done;t++){
+            const A=choose(r.id,g1,m-g[0],exA,false,true);if(!A)break;
+            const B=choose(r.id,g2,g[1]-m,new Set([A.e.id]),false,true);
+            if(B){place(A,r.id);place(B,r.id);done=true}else exA.add(A.e.id);
+          }
+          if(done)continue;
+        }
         const best=choose(r.id,g,glen,null,false);
         if(!best){virt.push(g);missing.push({date,roleId:r.id,gap:g});continue}
+        /* להימנע משארית קצרה בסוף הפער: מקצרים קצת אם יש מי שמכסה את השארית */
+        const rem=g[1]-best.seg[1];
+        if(rem>0&&rem<MINSEG){
+          const ne=Math.floor((g[1]-MINSEG)/15)*15;
+          if(ne-best.seg[0]>=MINSEG&&choose(r.id,[ne,g[1]],g[1]-ne,new Set([best.e.id]),false)){best.seg=[best.seg[0],ne]}
+        }
         place(best,r.id);
       }
     };
@@ -817,7 +840,7 @@ function specialDaysCard(){
 /* ---- מנהל: הגדרות ---- */
 function viewSettings(){
   let h='<h2>הגדרות</h2><div class="card"><h3>תפקידים / מתקנים</h3>';
-  sortedRoles().forEach(r=>{h+='<div class="row between wrap" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>'+esc(r.name)+(r.bday?' 🎂':'')+'</span><span class="row wrap"><label class="row" style="gap:4px;font-size:13px"><input type="checkbox" style="width:auto" data-chg="roleCombine" data-id="'+r.id+'"'+(r.combine?' checked':'')+'> ניתן לשילוב</label><button class="btn ghost sm" data-act="roleRename" data-id="'+r.id+'">שנה שם</button>'+(r.bday?'':'<button class="btn danger sm" data-act="roleDel" data-id="'+r.id+'">מחק</button>')+'</span></div>'});
+  sortedRoles().forEach(r=>{h+='<div class="row between wrap" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>'+esc(r.name)+(r.bday?' 🎂':'')+'</span><span class="row wrap"><label class="row" style="gap:4px;font-size:13px"><input type="checkbox" style="width:auto" data-chg="roleCombine" data-id="'+r.id+'"'+(r.combine?' checked':'')+'> ניתן לשילוב</label>'+(r.bday?'':'<label class="row" style="gap:4px;font-size:13px"><input type="checkbox" style="width:auto" data-chg="roleEvOnly" data-id="'+r.id+'"'+(r.evOnly?' checked':'')+'> רק ביום עם יום הולדת</label>')+'<button class="btn ghost sm" data-act="roleRename" data-id="'+r.id+'">שנה שם</button>'+(r.bday?'':'<button class="btn danger sm" data-act="roleDel" data-id="'+r.id+'">מחק</button>')+'</span></div>'});
   h+='<p class="muted" style="margin-top:8px">"ניתן לשילוב" = אפשר לשבץ עובד בו-זמנית בתפקיד הזה ובתפקיד נוסף שגם הוא ניתן לשילוב (למשל סליידר + חצי פייפ). הפיזור האוטומטי משלב רק כשאין עובד אחר פנוי.</p>';
   h+='<div class="row" style="margin-top:10px"><input type="text" id="newRole" placeholder="תפקיד חדש"><button class="btn sm" data-act="roleAdd">הוסף</button></div></div>';
   h+='<div class="card"><h3>שעות פתיחה וסגירה — ברירת מחדל לפי יום בשבוע</h3><p class="muted">"פתיחה" ו"סגירה" במשמרות יתורגמו לשעות האלה. סימון "סגור" = המקום לא עובד ביום הזה, ועובדים לא יוכלו לסמן בו זמינות. אפשר לשנות יום ספציפי (חופשה/חג) מתוך מסך הסידור.</p>';
@@ -1229,6 +1252,7 @@ const C={ /* שינוי ערך בשדה */
     map[el.dataset.w]=Object.assign({},map[el.dataset.w],{[el.dataset.k]:el.value});
     Store.set('settings','hours',{map});
   },
+  roleEvOnly(el){const r=role(el.dataset.id);if(r)Store.set('roles',r.id,Object.assign({},r,{evOnly:el.checked}))},
   roleCombine(el){const r=role(el.dataset.id);if(r)Store.set('roles',r.id,Object.assign({},r,{combine:el.checked}))},
   emAll(el){document.querySelectorAll('.em-role').forEach(c=>c.checked=el.checked)},
   emOne(){const l=[...document.querySelectorAll('.em-role')],a=$('#em-allroles');if(a)a.checked=l.length>0&&l.every(c=>c.checked)},
@@ -1288,6 +1312,7 @@ function render(){
   if(!me()){A.logout();return}
   if(me()&&me().isManager&&Store.mode&&!vals('roles').some(r=>r.bday)&&!S.bdayTried&&Object.keys(D('roles')||{}).length>=0&&S.userId){S.bdayTried=1;Store.set('roles','bday',{name:'יום הולדת',order:999,bday:true,combine:true})}
   if(me()&&me().isManager&&Store.mode&&S.userId&&!S.m8&&vals('employees').length&&!(D('settings')||{}).migr8){S.m8=1;vals('employees').forEach(e=>{if(+e.maxHours!==8)Store.set('employees',e.id,Object.assign({},e,{maxHours:8}))});Store.set('settings','migr8',{done:true,at:Date.now()})}
+  if(me()&&me().isManager&&Store.mode&&S.userId&&!S.mEv&&vals('roles').length>1&&!(D('settings')||{}).migrEv){S.mEv=1;vals('roles').forEach(r=>{if(!r.bday&&r.evOnly===undefined&&/ימי הולדת|יום הולדת/.test(r.name))Store.set('roles',r.id,Object.assign({},r,{evOnly:true}))});Store.set('settings','migrEv',{done:true,at:Date.now()})}
   const tr0=$('#tray'),sl=tr0?tr0.scrollLeft:0,st0=tr0?tr0.scrollTop:0,tb0=$('.tray'),tbs=tb0?tb0.scrollTop:0;
   app.innerHTML=viewShell();
   const tr1=$('#tray');if(tr1){tr1.scrollLeft=sl;tr1.scrollTop=st0}const tb1=$('.tray');if(tb1)tb1.scrollTop=tbs;
