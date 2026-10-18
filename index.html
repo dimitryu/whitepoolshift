@@ -148,6 +148,10 @@ main.wide{max-width:1100px}
 .tl i{position:absolute;top:0;bottom:0;background:var(--ok)}
 .lane-c{display:flex;flex-wrap:wrap;gap:6px;min-height:26px}
 .sc{display:inline-flex;gap:6px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:999px;padding:3px 4px 3px 10px;font-size:13px}
+.inst{position:fixed;inset-inline:12px;bottom:12px;z-index:9999;background:#fff;border:2px solid var(--primary);border-radius:18px;box-shadow:0 10px 40px rgba(0,0,0,.35);padding:14px;display:flex;gap:12px;align-items:flex-start;max-width:520px;margin-inline:auto;direction:rtl}
+.inst img{width:56px;height:56px;border-radius:14px;flex:0 0 auto}
+.inst b{display:block;font-size:16px;margin-bottom:2px}.inst p{margin:2px 0 8px;font-size:14px;line-height:1.45;color:#444}
+.inst .row{display:flex;gap:8px;flex-wrap:wrap}
 .sc.hl{outline:3px solid var(--primary);background:#fff7cc;font-weight:800}
 .sc.warn{border-color:var(--danger);background:#fff0f0}.sc.w2{border-color:var(--warn)}
 .sc em{font-style:normal;color:var(--primary);font-weight:700;font-size:12px}
@@ -173,7 +177,7 @@ main.wide{max-width:1100px}
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='6.11';
+const APP_VERSION='6.12';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -1392,6 +1396,40 @@ document.addEventListener('click',ev=>{if(Date.now()-DR_SUP<350){ev.stopPropagat
   }catch(e){console.error(e);S.fatal=e.message==='no-config'?'חסרה הגדרת Firebase בקובץ firebase-config.js':'לא הצלחנו להתחבר למסד הנתונים. בדוק אינטרנט, שכללי Firestore פורסמו ושהתחברות Email/Password מופעלת.';render();return}
   Store.on(render);render();
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+
+/* ---- התקנה כאפליקציה במכשיר ---- */
+(function(){
+  let dp=null,shown=false;
+  const ua=navigator.userAgent||'';
+  const ios=/iphone|ipad|ipod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const mobile=ios||/android/i.test(ua);
+  const standalone=()=>{try{return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch(_){return false}};
+  const K='wp_install';
+  const get=()=>{try{return JSON.parse(localStorage.getItem(K)||'{}')}catch(_){return {}}};
+  const put=o=>{try{localStorage.setItem(K,JSON.stringify(Object.assign(get(),o)))}catch(_){}};
+  const hide=()=>{const el=document.getElementById('inst');if(el)el.remove();shown=false};
+  function maybe(){
+    if(shown||!mobile||standalone())return;
+    const st=get();if(st.done||(st.snooze&&Date.now()<st.snooze))return;
+    if(!document.body)return;
+    shown=true;
+    const inApp=/FBAN|FBAV|Instagram|Line\//i.test(ua);
+    let txt,btn='';
+    if(dp){txt='התקן את האפליקציה על המסך הראשי כדי לפתוח אותה בלחיצה אחת, כמו כל אפליקציה.';btn='<button class="btn" id="inst-go">התקן עכשיו</button>'}
+    else if(ios){txt=inApp?'פתח את הקישור בדפדפן Safari, ואז:':'כדי להתקין: לחץ על כפתור השיתוף ⬆️ בתחתית המסך, וגלול ובחר "הוסף למסך הבית" ואז "הוסף".'}
+    else txt='כדי להתקין: פתח את תפריט הדפדפן ⋮ ובחר "התקן אפליקציה" או "הוסף למסך הבית". אם האפשרות לא מופיעה, פתח את הקישור בדפדפן Chrome.';
+    const d=document.createElement('div');d.id='inst';d.className='inst';
+    d.innerHTML='<img src="icons/icon-192.png" alt=""><div><b>התקן את White-Pool משמרות</b><p>'+txt+'</p><div class="row">'+btn+'<button class="btn ghost" id="inst-no">לא עכשיו</button></div></div>';
+    document.body.append(d);
+    const go=document.getElementById('inst-go');
+    if(go)go.onclick=async()=>{try{dp.prompt();const r=await dp.userChoice;if(r&&r.outcome==='accepted')put({done:1});else put({snooze:Date.now()+2*864e5})}catch(_){}dp=null;hide()};
+    document.getElementById('inst-no').onclick=()=>{put({snooze:Date.now()+2*864e5});hide()};
+  }
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;hide();maybe()});
+  window.addEventListener('appinstalled',()=>{put({done:1});dp=null;hide()});
+  window.__installCheck=maybe;
+  setTimeout(maybe,1800);
 })();
 </script>
 </body>

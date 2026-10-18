@@ -1,6 +1,7 @@
 {
   "name": "White-Pool משמרות",
   "short_name": "WP משמרות",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
