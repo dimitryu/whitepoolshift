@@ -152,6 +152,7 @@ main.wide{max-width:1100px}
 .inst img{width:56px;height:56px;border-radius:14px;flex:0 0 auto}
 .inst b{display:block;font-size:16px;margin-bottom:2px}.inst p{margin:2px 0 8px;font-size:14px;line-height:1.45;color:#444}
 .inst .row{display:flex;gap:8px;flex-wrap:wrap}
+.hg{display:grid;grid-template-columns:auto 1fr 1fr auto;gap:6px 8px;align-items:center;max-width:420px}.hg select{width:100%;padding:0 6px!important;height:34px!important;min-height:0!important;font-size:14px;border-radius:10px}.hg input{justify-self:center}
 .sc.hl{outline:3px solid var(--primary);background:#fff7cc;font-weight:800}
 .sc.warn{border-color:var(--danger);background:#fff0f0}.sc.w2{border-color:var(--warn)}
 .sc em{font-style:normal;color:var(--primary);font-weight:700;font-size:12px}
@@ -177,7 +178,7 @@ main.wide{max-width:1100px}
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='7.0';
+const APP_VERSION='7.1';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -636,7 +637,7 @@ function autoFill(dates){
     const av={};pool.forEach(e=>{av[e.id]=availWin(e.id,date)});
     /* בוחר את המועמד הטוב ביותר; relaxed = מותר לחפוף רק תפקידים שניתן לשלב */
     let poolF=()=>true;const isPart=e=>av[e.id]&&!(av[e.id][0]<=win[0]&&av[e.id][1]>=win[1]);
-    let MINSEG=180,noSplit=false; /* משמרת מינימלית מועדפת: 3 שעות */
+    let MINSEG=240,noSplit=false; /* משמרת מינימלית: 4 שעות (פער קצר יותר מתמלא כמו שהוא) */ /* משמרת מינימלית מועדפת: 3 שעות */
     const choose=(rid,g,glen,exclude,relaxed,full)=>{
       let best=null;
       pool.forEach(e=>{
@@ -691,7 +692,7 @@ function autoFill(dates){
     poolF=isPart;roles.forEach(r=>fillRole(r,false));
     poolF=()=>true;roles.forEach(r=>fillRole(r,false));
     /* שלב 3: ממלאים מקסימום אפשרי גם אם רק חלק מהיום, מהעובדים שנשארו זמינים */
-    MINSEG=45;noSplit=true;roles.forEach(r=>fillRole(r,true));MINSEG=180;noSplit=false;
+    noSplit=true;roles.forEach(r=>fillRole(r,true));MINSEG=240;noSplit=false;
     const bid=bdayId();
     evsOn(date).forEach(ev=>{
       const evWin=[toMin(resolve(ev.from||'open',date)),toMin(resolve(ev.to||'close',date))],need=ev.need||2;
@@ -888,12 +889,13 @@ function viewSettings(){
   sortedRoles().forEach(r=>{h+='<div class="row between wrap" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>'+esc(r.name)+(r.bday?' 🎂':'')+'</span><span class="row wrap"><label class="row" style="gap:4px;font-size:13px"><input type="checkbox" style="width:auto" data-chg="roleCombine" data-id="'+r.id+'"'+(r.combine?' checked':'')+'> ניתן לשילוב</label>'+(r.bday?'':'<label class="row" style="gap:4px;font-size:13px"><input type="checkbox" style="width:auto" data-chg="roleEvOnly" data-id="'+r.id+'"'+(isEvOnly(r)?' checked':'')+'> רק ביום עם יום הולדת</label>')+'<button class="btn ghost sm" data-act="roleRename" data-id="'+r.id+'">שנה שם</button>'+(r.bday?'':'<button class="btn danger sm" data-act="roleDel" data-id="'+r.id+'">מחק</button>')+'</span></div>'});
   h+='<p class="muted" style="margin-top:8px">"ניתן לשילוב" = אפשר לשבץ עובד בו-זמנית בתפקיד הזה ובתפקיד נוסף שגם הוא ניתן לשילוב (למשל סליידר + חצי פייפ). הפיזור האוטומטי משלב רק כשאין עובד אחר פנוי.</p>';
   h+='<div class="row" style="margin-top:10px"><input type="text" id="newRole" placeholder="תפקיד חדש"><button class="btn sm" data-act="roleAdd">הוסף</button></div></div>';
-  h+='<div class="card"><h3>שעות פתיחה וסגירה — ברירת מחדל לפי יום בשבוע</h3><p class="muted">"פתיחה" ו"סגירה" במשמרות יתורגמו לשעות האלה. סימון "סגור" = המקום לא עובד ביום הזה, ועובדים לא יוכלו לסמן בו זמינות. אפשר לשנות יום ספציפי (חופשה/חג) מתוך מסך הסידור.</p>';
+  h+='<div class="card"><h3>שעות פתיחה וסגירה — לפי יום בשבוע</h3><p class="muted" style="margin:2px 0 8px">"פתיחה" ו"סגירה" במשמרות מתורגמות לשעות האלה. "סגור" = המקום לא עובד והעובדים לא יסמנו בו זמינות. לשינוי ליום ספציפי (חג/חופשה): בסידור ← "שעות היום", או בכרטיס "ימים מיוחדים".</p><div class="hg"><span class="muted">יום</span><span class="muted">פתיחה</span><span class="muted">סגירה</span><span class="muted">סגור</span>';
   for(let w=0;w<7;w++){
-    const s=D('settings').hours,m=(s&&s.map&&s.map[w])||{open:DEF_HOURS[w][0],close:DEF_HOURS[w][1]};
+    const s0=D('settings').hours,m=(s0&&s0.map&&s0.map[w])||{open:DEF_HOURS[w][0],close:DEF_HOURS[w][1]};
     const cl=!!m.closed,dis=cl?' disabled':'';
-    h+='<div class="row wrap" style="margin:6px 0"><span style="min-width:62px;font-weight:700">'+DOW[w]+'</span><select data-chg="hrs" data-w="'+w+'" data-k="open"'+dis+'>'+optsHtml(HM_OPTS,m.open)+'</select><span>–</span><select data-chg="hrs" data-w="'+w+'" data-k="close"'+dis+'>'+optsHtml(HM_OPTS,m.close)+'</select><label class="row" style="gap:4px;margin-inline-start:6px"><input type="checkbox" style="width:auto" data-chg="hrsClosed" data-w="'+w+'"'+(cl?' checked':'')+'> סגור</label></div>';
+    h+='<b>'+DOW[w]+'</b><select data-chg="hrs" data-w="'+w+'" data-k="open"'+dis+'>'+optsHtml(HM_OPTS,m.open)+'</select><select data-chg="hrs" data-w="'+w+'" data-k="close"'+dis+'>'+optsHtml(HM_OPTS,m.close)+'</select><input type="checkbox" style="width:20px;height:20px" data-chg="hrsClosed" data-w="'+w+'"'+(cl?' checked':'')+'>';
   }
+  h+='</div>';
   h+='</div><div class="card"><h3>ייבוא עובדים מקובץ</h3><p class="muted">קובץ CSV עם העמודות: שם, טלפון, תפקידים (מופרדים ב-;). עובדים שכבר קיימים (לפי שם) מדולגים. הקובץ לא נשמר בשום מקום מלבד המסד שלך.</p><button class="btn sec" data-act="impPick">בחר קובץ…</button><input type="file" id="impFile" accept=".csv,.txt" hidden data-chg="impFile"></div>';
   return h;
 }
