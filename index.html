@@ -153,6 +153,11 @@ main.wide{max-width:1100px}
 .inst b{display:block;font-size:16px;margin-bottom:2px}.inst p{margin:2px 0 8px;font-size:14px;line-height:1.45;color:#444}
 .inst .row{display:flex;gap:8px;flex-wrap:wrap}
 .hg{display:grid;grid-template-columns:auto 1fr 1fr auto;gap:6px 8px;align-items:center;max-width:420px}.hg select{width:100%;padding:0 6px!important;height:34px!important;min-height:0!important;font-size:14px;border-radius:10px}.hg input{justify-self:center}
+.av2{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;margin-top:10px}
+.avc{border-radius:16px;padding:8px;min-width:0}.avc.warn{background:#fff1f1;border:1.5px solid #f0b3b3}.avc.ok{background:#effaf1;border:1.5px solid #a6dbb2}
+.avc .avh{margin:2px 2px 8px}.avc .avh h3{font-size:15px}.avc .avsub{margin:8px 4px 4px;font-weight:700;font-size:12px}
+.avc .card{padding:8px 10px!important;margin:6px 0!important}.avc .card .row{flex-direction:column;align-items:stretch;gap:6px}.avc .card .grow{min-width:0}.avc .card .chip{display:none}.avc .card .btn{width:100%;text-align:center}.avc .btn.sm{font-size:12px;padding:4px 8px}.avc .muted{font-size:12px}
+@media(max-width:420px){.av2{gap:6px}.avc{padding:5px}}
 .sc.hl{outline:3px solid var(--primary);background:#fff7cc;font-weight:800}
 .sc.warn{border-color:var(--danger);background:#fff0f0}.sc.w2{border-color:var(--warn)}
 .sc em{font-style:normal;color:var(--primary);font-weight:700;font-size:12px}
@@ -178,7 +183,7 @@ main.wide{max-width:1100px}
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='7.1';
+const APP_VERSION='7.2';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -811,6 +816,12 @@ function availSection(title,cls,items){
   return '<div class="row between" style="margin:14px 2px 8px"><h3 style="margin:0">'+title+'</h3><span class="chip '+cls+'">'+items.length+'</span></div>'+
     (items.length?items.join(''):'<div class="muted" style="margin:0 4px 6px">אין עובדים בקבוצה הזו</div>');
 }
+function availCol(title,cls,parts){
+  const n=parts.reduce((a,p)=>a+p.items.length,0);
+  return '<div class="avc '+cls+'"><div class="row between avh"><h3 style="margin:0">'+title+'</h3><span class="chip '+cls+'">'+n+'</span></div>'+
+    parts.map(p=>(p.sub?'<div class="muted avsub">'+p.sub+' ('+p.items.length+')</div>':'')+p.items.join('')).join('')+
+    (n?'':'<div class="muted" style="padding:6px 4px">אין עובדים</div>')+'</div>';
+}
 function viewAvailMgr(){
   const ws=S.avWeek,emps=activeEmps().filter(e=>!e.isManager||(e.roles||[]).length);
   if(S.avDay&&weekStart(S.avDay)!==ws)S.avDay=null;
@@ -827,16 +838,14 @@ function viewAvailMgr(){
     const cnt=e=>days.filter(d=>availState(e.id,d).s==='on').length;
     const avail=submitted.filter(e=>cnt(e)>0),allOff=submitted.filter(e=>cnt(e)===0);
     h+='<div class="muted">הגישו '+submitted.length+' מתוך '+emps.length+'</div>';
-    h+=availSection('לא הגישו זמינות','warn',notSub.map(e=>card(e,'עדיין לא הגיש/ה',remindBtn(e))));
-    h+=availSection('הגישו — זמינים','ok',avail.map(e=>card(e,'זמין/ה '+cnt(e)+' מתוך '+days.length+' ימים · לחץ לפירוט','<span class="chip ok">✓</span>')));
-    if(allOff.length)h+=availSection('הגישו — לא זמינים כל השבוע','grey',allOff.map(e=>card(e,'סימן/ה שלא זמין/ה בשום יום','')));
+    h+='<div class="av2">'+availCol('לא הגישו','warn',[{items:notSub.map(e=>card(e,'עדיין לא הגיש/ה',remindBtn(e)))}])+
+      availCol('הגישו','ok',[{sub:'זמינים',items:avail.map(e=>card(e,'זמין/ה '+cnt(e)+' מתוך '+days.length+' ימים · לחץ לפירוט','<span class="chip ok">✓</span>'))},{sub:allOff.length?'לא זמינים כל השבוע':'',items:allOff.map(e=>card(e,'סימן/ה שלא זמין/ה בשום יום',''))}])+'</div>';
   }else{
     const d=S.avDay,on=[],off=[],none=[];
     emps.forEach(e=>{const a=availState(e.id,d);(a.s==='on'?on:a.s==='off'?off:none).push([e,a])});
     h+='<div class="muted" style="margin-bottom:4px">'+fmtDay(d)+'</div>';
-    h+=availSection('זמינים','ok',on.map(([e,a])=>card(e,esc(describeAvail(a,date))+(a.note?' · '+esc(a.note):''),'')));
-    h+=availSection('סימנו לא זמין','grey',off.map(([e,a])=>card(e,'לא זמין/ה'+(a.note?' · '+esc(a.note):''),'')));
-    h+=availSection('לא הגישו','warn',none.map(([e])=>card(e,availDoc(e.id,ws)?'לא סומן ליום הזה':'עדיין לא הגיש/ה זמינות',availDoc(e.id,ws)?'':remindBtn(e))));
+    h+='<div class="av2">'+availCol('לא הגישו','warn',[{items:none.map(([e])=>card(e,availDoc(e.id,ws)?'לא סומן ליום הזה':'עדיין לא הגיש/ה זמינות',availDoc(e.id,ws)?'':remindBtn(e)))}])+
+      availCol('הגישו','ok',[{sub:'זמינים',items:on.map(([e,a])=>card(e,esc(describeAvail(a,d))+(a.note?' · '+esc(a.note):''),''))},{sub:'סימנו לא זמין',items:off.map(([e,a])=>card(e,'לא זמין/ה'+(a.note?' · '+esc(a.note):''),''))}])+'</div>';
   }
   return h;
 }
