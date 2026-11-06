@@ -183,7 +183,7 @@ main.wide{max-width:1100px}
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='7.3';
+const APP_VERSION='7.3.1';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -828,7 +828,7 @@ function remModal(){
   openModal(h);
 }
 function availCol(title,cls,parts){
-  const n=parts.reduce((a,p)=>a+p.items.length,0);
+  const n=parts.reduce((a,p)=>a+(p.raw?0:p.items.length),0);
   return '<div class="avc '+cls+'"><div class="row between avh"><h3 style="margin:0">'+title+'</h3><span class="chip '+cls+'">'+n+'</span></div>'+
     parts.map(p=>(p.sub?'<div class="muted avsub">'+p.sub+' ('+p.items.length+')</div>':'')+p.items.join('')).join('')+
     (n?'':'<div class="muted" style="padding:6px 4px">אין עובדים</div>')+'</div>';
@@ -849,13 +849,13 @@ function viewAvailMgr(){
     const cnt=e=>days.filter(d=>availState(e.id,d).s==='on').length;
     const avail=submitted.filter(e=>cnt(e)>0),allOff=submitted.filter(e=>cnt(e)===0);
     h+='<div class="muted">הגישו '+submitted.length+' מתוך '+emps.length+'</div>';
-    h+='<div class="av2">'+availCol('לא הגישו','warn',[{sub:'',items:[notSub.length?'<button class="btn sm" style="width:100%;margin:2px 0 4px" data-act="remAll">📲 תזכורת לכולם ('+notSub.length+')</button>':''].filter(Boolean)},{items:notSub.map(e=>card(e,'עדיין לא הגיש/ה',remindBtn(e)))}])+
+    h+='<div class="av2">'+availCol('לא הגישו','warn',[{sub:'',raw:1,items:[notSub.length?'<button class="btn sm" style="width:100%;margin:2px 0 4px" data-act="remAll">📲 תזכורת לכולם ('+notSub.length+')</button>':''].filter(Boolean)},{items:notSub.map(e=>card(e,'עדיין לא הגיש/ה',remindBtn(e)))}])+
       availCol('הגישו','ok',[{sub:'זמינים',items:avail.map(e=>card(e,'זמין/ה '+cnt(e)+' מתוך '+days.length+' ימים · לחץ לפירוט','<span class="chip ok">✓</span>'))},{sub:allOff.length?'לא זמינים כל השבוע':'',items:allOff.map(e=>card(e,'סימן/ה שלא זמין/ה בשום יום',''))}])+'</div>';
   }else{
     const d=S.avDay,on=[],off=[],none=[];
     emps.forEach(e=>{const a=availState(e.id,d);(a.s==='on'?on:a.s==='off'?off:none).push([e,a])});
     h+='<div class="muted" style="margin-bottom:4px">'+fmtDay(d)+'</div>';
-    h+='<div class="av2">'+availCol('לא הגישו','warn',[{items:(none.length?['<button class="btn sm" style="width:100%;margin:2px 0 4px" data-act="remAll">📲 תזכורת לכולם ('+none.length+')</button>']:[]).concat(none.map(([e])=>card(e,availDoc(e.id,ws)?'לא סומן ליום הזה':'עדיין לא הגיש/ה זמינות',availDoc(e.id,ws)?'':remindBtn(e))))}])+
+    h+='<div class="av2">'+availCol('לא הגישו','warn',[{raw:1,items:(notSubEmps(ws).length?['<button class="btn sm" style="width:100%;margin:2px 0 4px" data-act="remAll">📲 תזכורת לכולם ('+notSubEmps(ws).length+')</button>']:[])},{items:none.map(([e])=>card(e,availDoc(e.id,ws)?'לא סומן ליום הזה':'עדיין לא הגיש/ה זמינות',availDoc(e.id,ws)?'':remindBtn(e)))}])+
       availCol('הגישו','ok',[{sub:'זמינים',items:on.map(([e,a])=>card(e,esc(describeAvail(a,d))+(a.note?' · '+esc(a.note):''),''))},{sub:'סימנו לא זמין',items:off.map(([e,a])=>card(e,'לא זמין/ה'+(a.note?' · '+esc(a.note):''),''))}])+'</div>';
   }
   return h;
