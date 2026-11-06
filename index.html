@@ -183,7 +183,7 @@ main.wide{max-width:1100px}
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='7.2';
+const APP_VERSION='7.3';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -816,6 +816,17 @@ function availSection(title,cls,items){
   return '<div class="row between" style="margin:14px 2px 8px"><h3 style="margin:0">'+title+'</h3><span class="chip '+cls+'">'+items.length+'</span></div>'+
     (items.length?items.join(''):'<div class="muted" style="margin:0 4px 6px">אין עובדים בקבוצה הזו</div>');
 }
+const notSubEmps=ws=>activeEmps().filter(e=>!e.isManager||(e.roles||[]).length).filter(e=>!availDoc(e.id,ws));
+const remMsg=e=>'היי '+e.name.split(' ')[0]+', נא להגיש זמינות לשבוע '+weekLabel(S.avWeek)+' באפליקציה: '+location.href.split('#')[0].split('?')[0];
+function remModal(){
+  const ws=S.avWeek,list=notSubEmps(ws),sent=(S.remSent&&S.remSent.w===ws)?S.remSent.ids:[];
+  const withPh=list.filter(e=>phoneOf(e.id)),left=withPh.filter(e=>!sent.includes(e.id));
+  let h='<h3>תזכורת בוואטסאפ — מי שלא הגיש ('+list.length+')</h3><p class="muted">וואטסאפ פותח שיחה אחת בכל פעם. לחץ "שלח לבא בתור", שלח את ההודעה בוואטסאפ וחזור לכאן — הכפתור ימשיך לעובד הבא.</p>';
+  h+='<button class="btn block" data-act="remNext"'+(left.length?'':' disabled style="opacity:.5"')+'>'+(left.length?'📲 שלח לבא בתור: '+esc(left[0].name)+' ('+left.length+' נותרו)':'✓ נשלח לכולם')+'</button>';
+  h+='<div style="margin-top:10px">'+list.map(e=>{const ph=phoneOf(e.id),done=sent.includes(e.id);return '<div class="row between" style="padding:6px 2px;border-bottom:1px solid #eee"><span>'+(done?'✓ ':'')+esc(e.name)+(ph?'':' <span class="muted">(אין טלפון)</span>')+'</span>'+(ph?'<button class="btn ghost sm" data-act="remOne" data-id="'+e.id+'">'+(done?'שלח שוב':'שלח')+'</button>':'')+'</div>'}).join('')+'</div>';
+  h+='<div class="row" style="margin-top:12px"><button class="btn sec" data-act="remCopy">העתק הודעה</button><button class="btn ghost" data-act="closeModal">סגור</button></div>';
+  openModal(h);
+}
 function availCol(title,cls,parts){
   const n=parts.reduce((a,p)=>a+p.items.length,0);
   return '<div class="avc '+cls+'"><div class="row between avh"><h3 style="margin:0">'+title+'</h3><span class="chip '+cls+'">'+n+'</span></div>'+
@@ -838,13 +849,13 @@ function viewAvailMgr(){
     const cnt=e=>days.filter(d=>availState(e.id,d).s==='on').length;
     const avail=submitted.filter(e=>cnt(e)>0),allOff=submitted.filter(e=>cnt(e)===0);
     h+='<div class="muted">הגישו '+submitted.length+' מתוך '+emps.length+'</div>';
-    h+='<div class="av2">'+availCol('לא הגישו','warn',[{items:notSub.map(e=>card(e,'עדיין לא הגיש/ה',remindBtn(e)))}])+
+    h+='<div class="av2">'+availCol('לא הגישו','warn',[{sub:'',items:[notSub.length?'<button class="btn sm" style="width:100%;margin:2px 0 4px" data-act="remAll">📲 תזכורת לכולם ('+notSub.length+')</button>':''].filter(Boolean)},{items:notSub.map(e=>card(e,'עדיין לא הגיש/ה',remindBtn(e)))}])+
       availCol('הגישו','ok',[{sub:'זמינים',items:avail.map(e=>card(e,'זמין/ה '+cnt(e)+' מתוך '+days.length+' ימים · לחץ לפירוט','<span class="chip ok">✓</span>'))},{sub:allOff.length?'לא זמינים כל השבוע':'',items:allOff.map(e=>card(e,'סימן/ה שלא זמין/ה בשום יום',''))}])+'</div>';
   }else{
     const d=S.avDay,on=[],off=[],none=[];
     emps.forEach(e=>{const a=availState(e.id,d);(a.s==='on'?on:a.s==='off'?off:none).push([e,a])});
     h+='<div class="muted" style="margin-bottom:4px">'+fmtDay(d)+'</div>';
-    h+='<div class="av2">'+availCol('לא הגישו','warn',[{items:none.map(([e])=>card(e,availDoc(e.id,ws)?'לא סומן ליום הזה':'עדיין לא הגיש/ה זמינות',availDoc(e.id,ws)?'':remindBtn(e)))}])+
+    h+='<div class="av2">'+availCol('לא הגישו','warn',[{items:(none.length?['<button class="btn sm" style="width:100%;margin:2px 0 4px" data-act="remAll">📲 תזכורת לכולם ('+none.length+')</button>']:[]).concat(none.map(([e])=>card(e,availDoc(e.id,ws)?'לא סומן ליום הזה':'עדיין לא הגיש/ה זמינות',availDoc(e.id,ws)?'':remindBtn(e))))}])+
       availCol('הגישו','ok',[{sub:'זמינים',items:on.map(([e,a])=>card(e,esc(describeAvail(a,d))+(a.note?' · '+esc(a.note):''),''))},{sub:'סימנו לא זמין',items:off.map(([e,a])=>card(e,'לא זמין/ה'+(a.note?' · '+esc(a.note):''),''))}])+'</div>';
   }
   return h;
@@ -1061,6 +1072,10 @@ const A={
     S.draftSaved=true;S.missing=[];render();toast('הזמינות נשלחה ✓');
   },
   /* מנהל: זמינות */
+  remAll(){S.remSent=(S.remSent&&S.remSent.w===S.avWeek)?S.remSent:{w:S.avWeek,ids:[]};remModal()},
+  remNext(){const ws=S.avWeek,sent=S.remSent&&S.remSent.w===ws?S.remSent:(S.remSent={w:ws,ids:[]});const e=notSubEmps(ws).find(x=>phoneOf(x.id)&&!sent.ids.includes(x.id));if(!e)return;sent.ids.push(e.id);window.open('https://wa.me/'+intlPhone(phoneOf(e.id))+'?text='+encodeURIComponent(remMsg(e)),'_blank');remModal()},
+  remOne(d){const e=emp(d.id),ws=S.avWeek,sent=S.remSent&&S.remSent.w===ws?S.remSent:(S.remSent={w:ws,ids:[]});if(!sent.ids.includes(e.id))sent.ids.push(e.id);window.open('https://wa.me/'+intlPhone(phoneOf(e.id))+'?text='+encodeURIComponent(remMsg(e)),'_blank');remModal()},
+  remCopy(){const t='היי, נא להגיש זמינות לשבוע '+weekLabel(S.avWeek)+' באפליקציה: '+location.href.split('#')[0].split('?')[0];(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('ההודעה הועתקה ✓')).catch(()=>toast('לא ניתן להעתיק'))},
   remind(d){
     const e=emp(d.id);if(!phoneOf(d.id))return toast('לעובד הזה אין טלפון');const url=location.href.split('#')[0];
     const t='היי '+e.name.split(' ')[0]+', נא להגיש זמינות לשבוע '+weekLabel(S.avWeek)+' באפליקציה: '+url;
