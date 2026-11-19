@@ -32,6 +32,11 @@ service cloud.firestore {
     match /weeks/{id}     { allow read: if isActive(); allow write: if isMgr(); }
     match /settings/{id}  { allow read: if isActive(); allow write: if isMgr(); }
     match /shifts/{id}    { allow read: if isActive(); allow write: if isMgr(); }
+    // יומן פעולות: כל משתמש פעיל כותב רשומה על עצמו, רק מנהל קורא/מוחק
+    match /logs/{id} {
+      allow read, delete: if isMgr();
+      allow create: if isActive() && request.resource.data.empId == myEmp();
+    }
     match /availability/{id} {
       allow read: if isMgr() || (isActive() && resource.data.empId == myEmp());
       allow create, update: if isActive() && request.resource.data.empId == myEmp()

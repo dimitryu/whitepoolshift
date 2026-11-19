@@ -158,6 +158,12 @@ main.wide{max-width:1100px}
 .avc .avh{margin:2px 2px 8px}.avc .avh h3{font-size:15px}.avc .avsub{margin:8px 4px 4px;font-weight:700;font-size:12px}
 .avc .card{padding:8px 10px!important;margin:6px 0!important}.avc .card .row{flex-direction:column;align-items:stretch;gap:6px}.avc .card .grow{min-width:0}.avc .card .chip{display:none}.avc .card .btn{width:100%;text-align:center}.avc .btn.sm{font-size:12px;padding:4px 8px}.avc .muted{font-size:12px}
 @media(max-width:420px){.av2{gap:6px}.avc{padding:5px}}
+.lg-day{margin:14px 2px 6px;font-weight:800;color:var(--muted);font-size:13px}
+.lg-row{display:flex;gap:8px;align-items:flex-start;background:#fff;border-radius:12px;padding:8px 10px;margin-bottom:5px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.lg-t{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px;min-width:38px;padding-top:2px}
+.lg-i{font-size:16px;line-height:1.3}.lg-x{font-size:14px;word-break:break-word}
+.lg-chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}.lg-chips .pill{flex:0 0 auto;padding:6px 12px;min-width:0;flex-direction:row}
+mark{background:#fff2a8;color:inherit;border-radius:3px;padding:0 1px}
 .sc.hl{outline:3px solid var(--primary);background:#fff7cc;font-weight:800}
 .sc.warn{border-color:var(--danger);background:#fff0f0}.sc.w2{border-color:var(--warn)}
 .sc em{font-style:normal;color:var(--primary);font-weight:700;font-size:12px}
@@ -183,7 +189,7 @@ main.wide{max-width:1100px}
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='7.3.1';
+const APP_VERSION='8.0';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -211,9 +217,108 @@ let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add
 
 /* ================= שכבת נתונים (Firestore או מצב ניסיון) ================= */
 const COLS=['employees','roles','days','availability','shifts','weeks','settings'];
-const ALL=COLS.concat(['secrets','users']);
+const ALL=COLS.concat(['secrets','users','logs']);
 const emailOf=(p,v)=>'p'+normPhone(p)+(v>1?'v'+v:'')+'@wp-shifts.example';
 const genPin=()=>{const a=new Uint32Array(1);crypto.getRandomValues(a);return String(a[0]%1000000).padStart(6,'0')};
+
+/* ================= יומן פעולות (לוגים) ================= */
+const LOG={bulk:null,
+  TYPES:{auth:['🔑','כניסות'],shift:['📅','משמרות'],auto:['⚡','פיזור אוטומטי'],avail:['🕒','זמינות'],pin:['🔐','קודי כניסה'],emp:['👥','עובדים'],set:['⚙️','הגדרות'],pub:['📢','פרסום'],send:['💬','שליחות וייצוא']},
+  tr(s){const d=s.date;return mmT(toMin(resolve(s.from,d)))+'–'+endT(toMin(resolve(s.to,d)),d)},
+  sh(s){try{return empName(s.empId)+' · '+roleName(s.roleId)+' · '+fmtDay(s.date)+' '+LOG.tr(s)}catch(e){return empName(s.empId)}},
+  add(type,text){
+    try{
+      const m=S.userId?emp(S.userId):null;if(!m)return;
+      const id=Store.newId('logs'),e={id,ts:Date.now(),empId:S.userId,name:m.name,mgr:!!m.isManager,type,text};
+      if(Store.mode==='cloud')Store.db.collection('logs').doc(id).set(e).catch(x=>console.warn('log',x.code));
+      else{Store.data.logs[id]=e;Store.save()}
+    }catch(x){console.warn('log',x)}
+  },
+  w(c,id,o,prev,isDel){
+    try{
+      if(!S.userId)return;
+      const B=LOG.bulk,L=(t,x)=>LOG.add(t,x);
+      if(c==='shifts'){
+        if(B){isDel?B.del++:B.add++;return}
+        const sx=o||prev;if(!sx)return;
+        L('shift',(isDel?'מחיקת משמרת':prev?'עדכון משמרת':'שיבוץ משמרת')+': '+LOG.sh(sx)+(prev&&!isDel&&LOG.sh(prev)!==LOG.sh(sx)?' (היה: '+LOG.sh(prev)+')':''));
+      }else if(c==='availability'){
+        if(isDel)return L('avail','מחיקת זמינות של '+empName(prev.empId)+' לשבוע '+weekLabel(prev.weekStart));
+        const n=Object.values(o.days||{}).filter(x=>x&&x.t!=='off'&&!x.closed).length;
+        L('avail',(prev?'עדכון':'הגשת')+' זמינות'+(o.empId!==S.userId?' של '+empName(o.empId):'')+' לשבוע '+weekLabel(o.weekStart)+' — '+n+' ימים זמינים');
+      }else if(c==='employees'){
+        if(isDel)return L('emp','מחיקת עובד: '+prev.name);
+        if(!prev)return L('emp','הוספת עובד: '+o.name+(o.isManager?' (מנהל)':''));
+        const ch=[];
+        if(prev.name!==o.name)ch.push('שם: '+prev.name+' ← '+o.name);
+        if((prev.active!==false)!==(o.active!==false))ch.push(o.active===false?'הושבת':'הופעל');
+        if(!!prev.isManager!==!!o.isManager)ch.push(o.isManager?'הוענקה הרשאת מנהל':'הוסרה הרשאת מנהל');
+        if((+prev.maxHours||8)!==(+o.maxHours||8))ch.push('מגבלת שעות '+(+prev.maxHours||8)+' ← '+(+o.maxHours||8));
+        if(JSON.stringify((prev.roles||[]).slice().sort())!==JSON.stringify((o.roles||[]).slice().sort()))ch.push('תפקידים: '+(o.roles||[]).map(roleName).join(', ')||'ללא');
+        if(ch.length)L('emp','עדכון עובד '+o.name+' — '+ch.join(' · '));
+      }else if(c==='secrets'){
+        if(isDel)return;const n=empName(id);
+        if(!prev)L('pin','נוצר קוד כניסה ל'+n);
+        else if(prev.pin!==o.pin&&o.pin)L('pin','הונפק קוד כניסה חדש ל'+n);
+        else if(prev.phone!==o.phone)L('pin','עודכן מספר הטלפון של '+n);
+      }else if(c==='settings'){
+        if(id==='migr8')return;
+        if(id==='hours')L('set','עדכון שעות פתיחה/סגירה הקבועות');
+        else if(id==='notice')L('set','עדכון הודעת הזמינות לעובדים');
+        else if(id==='prefs')L('set','נעילת זמינות אחרי הגשה: '+(o.lockAvail===false?'כבויה':'פעילה'));
+        else L('set','עדכון הגדרה: '+id);
+      }else if(c==='days'){
+        L('set',isDel?'איפוס שעות מיוחדות ליום '+fmtDay(id):'עדכון שעות/חג ליום '+fmtDay(id));
+      }else if(c==='weeks'){
+        const pp=!!(prev&&prev.published),np=!!(o&&o.published);
+        if(pp!==np)L('pub',(np?'פרסום':'ביטול פרסום')+' הסידור לשבוע '+weekLabel(id));
+        else if(!isDel&&JSON.stringify([prev&&prev.skip,prev&&prev.ev,prev&&prev.force])!==JSON.stringify([o.skip,o.ev,o.force]))L('set','עדכון תפקידים/אירועים לשבוע '+weekLabel(id));
+      }else if(c==='roles'){
+        if(isDel)L('set','מחיקת תפקיד: '+prev.name);
+        else if(!prev){if(id!=='bday')L('set','הוספת תפקיד: '+o.name)}
+        else if(prev.name!==o.name)L('set','שינוי שם תפקיד: '+prev.name+' ← '+o.name);
+      }
+    }catch(e){console.warn('log',e)}
+  },
+  dt(ts){const d=new Date(ts);return 'יום '+DOW[d.getDay()]+' '+d.getDate()+'/'+(d.getMonth()+1)+' '+pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes())},
+  hay(l){return (l.name+' '+l.text+' '+(LOG.TYPES[l.type]||['',''])[1]+' '+LOG.dt(l.ts)+(l.mgr?' מנהל':' עובד')).toLowerCase()},
+  words(){return (S.logQ||'').trim().toLowerCase().split(/\s+/).filter(Boolean)},
+  filtered(){
+    const q=LOG.words(),rg=S.logRange||'7',now=Date.now(),t0=new Date().setHours(0,0,0,0);
+    const from=rg==='all'?0:rg==='today'?t0:now-(+rg)*864e5;
+    return vals('logs').filter(l=>l.ts>=from&&(!S.logType||l.type===S.logType)&&(!S.logUser||l.empId===S.logUser)&&q.every(w=>LOG.hay(l).includes(w))).sort((a,b)=>b.ts-a.ts);
+  },
+  hl(t){
+    const q=LOG.words();if(!q.length)return esc(t);
+    const re=new RegExp('('+q.map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')','gi');
+    return t.split(re).map((p,i)=>i%2?'<mark>'+esc(p)+'</mark>':esc(p)).join('');
+  },
+  listHtml(){
+    const all=LOG.filtered(),lim=S.logLimit||100,list=all.slice(0,lim);
+    let h='',last='';
+    list.forEach(l=>{
+      const d=new Date(l.ts),k=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+      if(k!==last){last=k;h+='<div class="lg-day">'+fmtDay(k)+'</div>'}
+      const ty=LOG.TYPES[l.type]||['•',''];
+      h+='<div class="lg-row"><span class="lg-t">'+pad(d.getHours())+':'+pad(d.getMinutes())+'</span><span class="lg-i" title="'+ty[1]+'">'+ty[0]+'</span><div class="grow"><b>'+LOG.hl(l.name||'?')+'</b>'+(l.mgr?' <span class="chip grey">מנהל</span>':'')+'<div class="lg-x">'+LOG.hl(l.text||'')+'</div></div></div>';
+    });
+    if(!list.length)h='<div class="card empty">'+(vals('logs').length?'לא נמצאו לוגים שמתאימים לחיפוש/לסינון.':'עדיין אין לוגים. פעולות חדשות יופיעו כאן.')+'</div>';
+    if(all.length>lim)h+='<button class="btn sec block" data-act="logMore" style="margin:10px 0">הצג עוד ('+(all.length-lim)+')</button>';
+    return {h,n:all.length};
+  }
+};
+function viewLogs(){
+  const L=LOG.listHtml(),users=[];const seen={};
+  vals('logs').forEach(l=>{if(!seen[l.empId]){seen[l.empId]=1;users.push([l.empId,l.name])}});users.sort((a,b)=>a[1].localeCompare(b[1],'he'));
+  let h='<h2>יומן פעולות</h2>';
+  if(Store.mode==='cloud'&&Store.logsErr)h+='<div class="banner" style="background:#fdecec;color:#a61b1b">לא ניתן לקרוא את היומן ('+esc(Store.logsErr)+'). כנראה שכללי Firestore עדיין לא עודכנו — העתק את הקובץ firestore.rules מהמאגר ל-Firebase Console ← Firestore ← Rules ← Publish.</div>';
+  h+='<input type="text" id="logQ" data-inp="logQ" placeholder="🔍 חיפוש: שם, פעולה, תאריך, שעה…" value="'+esc(S.logQ||'')+'" style="width:100%;margin:4px 0 8px" autocomplete="off">';
+  h+='<div class="row" style="gap:8px;margin-bottom:8px"><select data-chg="logRange" class="grow">'+[['today','היום'],['7','7 ימים אחרונים'],['30','30 ימים אחרונים'],['all','הכול']].map(([v,t])=>'<option value="'+v+'"'+((S.logRange||'7')===v?' selected':'')+'>'+t+'</option>').join('')+'</select>'+
+    '<select data-chg="logUser" class="grow"><option value="">כל המשתמשים</option>'+users.map(([i,n])=>'<option value="'+i+'"'+(S.logUser===i?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></div>';
+  h+='<div class="lg-chips"><button class="pill'+(!S.logType?' on':'')+'" data-act="logType" data-t="">הכול</button>'+Object.keys(LOG.TYPES).map(k=>'<button class="pill'+(S.logType===k?' on':'')+'" data-act="logType" data-t="'+k+'">'+LOG.TYPES[k][0]+' '+LOG.TYPES[k][1]+'</button>').join('')+'</div>';
+  h+='<div class="row between" style="margin:8px 0"><span class="muted" id="log-cnt">'+L.n+' רשומות</span><span class="row" style="gap:6px"><button class="btn ghost sm" data-act="logCopy">📋 העתק</button><button class="btn ghost sm" data-act="logPrune">🧹 מחק ישנים</button></span></div>';
+  return h+'<div id="log-list">'+L.h+'</div>';
+}
 const Store={
   mode:'demo',data:{},cbs:[],unsubs:[],cfg:null,
   on(f){this.cbs.push(f)},emit(){this.cbs.forEach(f=>f())},
@@ -248,18 +353,24 @@ const Store={
         if(first){first=false;res()}else this.emit();
       },err=>{console.error(err);if(first){first=false;rej(err)}else if(this.onError)this.onError(err)}));
     })));
+    if(isMgr){ /* יומן פעולות — לא חוסם כניסה אם הכללים עוד לא עודכנו */
+      this.logsErr=null;
+      this.unsubs.push(this.db.collection('logs').orderBy('ts','desc').limit(1500).onSnapshot(s=>{
+        const o={};s.forEach(d=>{o[d.id]=Object.assign({},d.data(),{id:d.id})});this.data.logs=o;this.logsErr=null;if(S.tab==='logs')this.emit();
+      },err=>{console.error(err);this.logsErr=err.code||'error';if(S.tab==='logs')this.emit()}));
+    }
   },
   stop(){this.unsubs.forEach(f=>f());this.unsubs=[]},
   save(){try{localStorage.setItem('wp_demo',JSON.stringify(this.data))}catch(e){}},
   newId(c){return this.mode==='cloud'?this.db.collection(c).doc().id:uid()},
   set(c,id,obj){
-    obj=Object.assign({},obj,{id});this.data[c][id]=obj;
+    obj=Object.assign({},obj,{id});const prev=this.data[c][id];this.data[c][id]=obj;LOG.w(c,id,obj,prev,false);
     if(this.mode==='cloud')this.db.collection(c).doc(id).set(obj).catch(e=>{console.error(e);toast('שגיאת שמירה — '+(e.code==='permission-denied'?'אין הרשאה':'בדוק חיבור'))});
     else this.save();
     this.emit();
   },
   del(c,id){
-    delete this.data[c][id];
+    const prev=this.data[c][id];delete this.data[c][id];LOG.w(c,id,null,prev,true);
     if(this.mode==='cloud')this.db.collection(c).doc(id).delete().catch(e=>{console.error(e);toast('שגיאת מחיקה')});
     else this.save();
     this.emit();
@@ -401,7 +512,7 @@ const S={empQ:'',empRole:'',empStatus:'all',avDay:null,needSetup:false,creds:[],
   draft:{},draftKey:'',draftSaved:false,missing:[],fatal:null};
 const me=()=>S.userId?emp(S.userId):null;
 const TABS={
-  manager:[['build','סידור','📅'],['avail','זמינות','🕒'],['emps','עובדים','👥'],['set','הגדרות','⚙️']],
+  manager:[['build','סידור','📅'],['avail','זמינות','🕒'],['emps','עובדים','👥'],['logs','יומן','📜'],['set','הגדרות','⚙️']],
   worker:[['myav','הזמינות שלי','🕒'],['myshifts','המשמרות שלי','📅']]
 };
 const timeOpts=(from,to,step=15)=>{const a=[];for(let m=from;m<=to;m+=step)a.push(pad(Math.floor(m/60))+':'+pad(m%60));return a};
@@ -434,7 +545,7 @@ function viewShell(){
   const tabs=TABS[S.view];
   if(!S.tab||!tabs.some(t=>t[0]===S.tab))S.tab=tabs[0][0];
   let body='';
-  switch(S.tab){case'build':body=viewBuild();break;case'avail':body=viewAvailMgr();break;case'emps':body=viewEmps();break;case'set':body=viewSettings();break;
+  switch(S.tab){case'build':body=viewBuild();break;case'avail':body=viewAvailMgr();break;case'emps':body=viewEmps();break;case'set':body=viewSettings();break;case'logs':body=viewLogs();break;
     case'myav':body=viewMyAvail();break;case'myshifts':body=viewMyShifts();break}
   return '<div class="shell"><header class="top"><div class="top-row"><div class="brand-wrap"><div class="logo-sm"></div><div class="brand">White-Pool<small>שלום '+esc(u.name.split(' ')[0])+'</small></div></div>'+
     '<div class="top-actions">'+(u.isManager?'<button class="icon-btn" data-act="switchView">'+(S.view==='manager'?'👤 כעובד':'🛠 כמנהל')+'</button>':'')+
@@ -1008,7 +1119,7 @@ const A={
         try{await cred.user.delete()}catch(x){}
         return toast('שגיאה בהגדרה ראשונית: '+(e.code||e.message)+' — בדוק שפרסמת את כללי Firestore');
       }
-      S.needSetup=false;await startSession(cred.user);
+      S.needSetup=false;await startSession(cred.user,true);
     }else{
       SEED_ROLES.forEach((n,i)=>Store.set('roles',Store.newId('roles'),{name:n,order:i}));
       Store.set('employees',empId,{name,isManager:true,roles:[],active:true,uid:'demo-'+empId});
@@ -1027,13 +1138,14 @@ const A={
         catch(e){err=e;if(!/invalid-credential|wrong-password|user-not-found|invalid-email/.test(e.code||''))break}
       }
       if(err)return toast(authMsg(err));
-      await startSession(Store.auth.currentUser);
+      await startSession(Store.auth.currentUser,true);
     }else{
       const id=Object.keys(D('secrets')).find(k=>samePhone(D('secrets')[k].phone,p)&&emp(k)&&emp(k).active!==false);
-      if(!id)return toast('המספר לא רשום במערכת');loginAs(id);
+      if(!id)return toast('המספר לא רשום במערכת');loginAs(id);LOG.add('auth','התחברות למערכת');
     }
   },
   async logout(){
+    try{LOG.add('auth','יציאה מהמערכת')}catch(e){}
     if(Store.mode==='cloud'){Store.stop();Store.reset();try{await Store.auth.signOut()}catch(e){}}
     localStorage.removeItem('wp_user');S.userId=null;S.view=null;S.tab=null;render();
   },
@@ -1072,6 +1184,16 @@ const A={
     S.draftSaved=true;S.missing=[];render();toast('הזמינות נשלחה ✓');
   },
   /* מנהל: זמינות */
+  logType(d){S.logType=d.t||'';S.logLimit=100;render()},
+  logMore(){S.logLimit=(S.logLimit||100)+100;render()},
+  logCopy(){const t=LOG.filtered().map(l=>LOG.dt(l.ts).replace(/^יום \S+ \d+\/\d+ /,'')+' | '+l.name+' | '+l.text).join('\n');(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('הועתקו '+LOG.filtered().length+' רשומות ✓')).catch(()=>toast('לא ניתן להעתיק'))},
+  logPrune(){
+    const cut=Date.now()-90*864e5,old=vals('logs').filter(l=>l.ts<cut);
+    if(!old.length)return toast('אין לוגים ישנים מ-90 יום');
+    if(!confirm('למחוק '+old.length+' לוגים ישנים מ-90 יום? אי אפשר לבטל.'))return;
+    old.forEach(l=>{delete Store.data.logs[l.id];if(Store.mode==='cloud')Store.db.collection('logs').doc(l.id).delete().catch(()=>{})});
+    if(Store.mode!=='cloud')Store.save();render();toast('נמחקו '+old.length+' לוגים');
+  },
   remAll(){S.remSent=(S.remSent&&S.remSent.w===S.avWeek)?S.remSent:{w:S.avWeek,ids:[]};remModal()},
   remNext(){const ws=S.avWeek,sent=S.remSent&&S.remSent.w===ws?S.remSent:(S.remSent={w:ws,ids:[]});const e=notSubEmps(ws).find(x=>phoneOf(x.id)&&!sent.ids.includes(x.id));if(!e)return;sent.ids.push(e.id);window.open('https://wa.me/'+intlPhone(phoneOf(e.id))+'?text='+encodeURIComponent(remMsg(e)),'_blank');remModal()},
   remOne(d){const e=emp(d.id),ws=S.avWeek,sent=S.remSent&&S.remSent.w===ws?S.remSent:(S.remSent={w:ws,ids:[]});if(!sent.ids.includes(e.id))sent.ids.push(e.id);window.open('https://wa.me/'+intlPhone(phoneOf(e.id))+'?text='+encodeURIComponent(remMsg(e)),'_blank');remModal()},
@@ -1247,7 +1369,7 @@ const A={
       await u.updatePassword(n);
     }catch(e){return toast(authMsg(e))}
     try{await Store.db.doc('secrets/'+S.userId).update({pin:'',selfSet:true})}catch(e){console.error(e)}
-    closeModal();toast('הקוד הוחלף ✓');
+    LOG.add('pin','החלפת קוד כניסה עצמית');closeModal();toast('הקוד הוחלף ✓');
   },
   async empSave(){
     const id=$('#em-id').value||Store.newId('employees'),name=$('#em-name').value.trim(),phone=normPhone($('#em-phone').value);
@@ -1292,6 +1414,38 @@ const A={
   }
 };
 ['laneTap','shiftX','laneSkip','laneUnskip','autoDay','autoWeek','autoUndo','clearDay','clearWeek','shiftSplit','evAdd','evEdit','evSave','evDel','shiftNew','shiftEdit','shiftSave','shiftDel','copyDay','copyDayGo'].forEach(k=>{const f=A[k];if(!f)return;const rm=['shiftSave','shiftDel','shiftX','autoDay','autoWeek','autoUndo','clearDay','clearWeek','copyDayGo','shiftSplit','evSave','evDel'].includes(k);A[k]=function(...a){if(pubGuard())return;const r=f.apply(this,a);if(rm)remindPub();return r}});
+/* יומן: פעולות שמסכמות שינוי גדול / שליחות וייצוא */
+(function(){
+  const bulk={
+    autoDay:()=>['auto','הפעלת פיזור אוטומטי — '+fmtDay(S.bDay)],
+    autoWeek:()=>['auto','הפעלת פיזור אוטומטי — שבוע '+weekLabel(S.bWeek)],
+    autoUndo:()=>['auto','ביטול הפיזור האוטומטי האחרון'],
+    clearDay:()=>['shift','ניקוי כל המשמרות של '+fmtDay(S.bDay)],
+    clearWeek:()=>['shift','ניקוי כל משמרות שבוע '+weekLabel(S.bWeek)],
+    purgeBad:()=>['shift','מחיקת משמרות עם טווח שעות שגוי'],
+    copyDayGo:()=>{const e=$('#cd-date');return ['shift','העתקת משמרות ל'+fmtDay(S.bDay)+(e&&e.value?' מ'+fmtDay(e.value):'')]},
+    laneSkip:d=>['shift','סימון התפקיד "'+roleName(d.role)+'" כלא נדרש ב'+fmtDay(S.bDay)]
+  };
+  Object.keys(bulk).forEach(k=>{const f=A[k];if(!f)return;A[k]=function(...a){
+    let t,x;try{[t,x]=bulk[k](...a)}catch(e){return f.apply(this,a)}
+    const B=LOG.bulk={add:0,del:0};let r;
+    try{r=f.apply(this,a)}finally{LOG.bulk=null}
+    if(B.add||B.del)LOG.add(t,x+' — '+(B.add?'נוספו '+B.add+' משמרות':'')+(B.add&&B.del?', ':'')+(B.del?'הוסרו '+B.del+' משמרות':''));
+    return r}});
+  const simple={
+    exportDay:()=>['send','ייצוא סידור '+fmtDay(S.bDay)+' כטקסט'],
+    exportWeek:()=>['send','ייצוא סידור שבוע '+weekLabel(S.bWeek)+' כטקסט'],
+    shareWa:()=>['send','שיתוף הסידור בוואטסאפ'],
+    copyTxt:()=>['send','העתקת הסידור כטקסט'],
+    remind:d=>['send','תזכורת זמינות בוואטסאפ ל'+empName(d.id)],
+    remOne:d=>['send','תזכורת זמינות בוואטסאפ ל'+empName(d.id)],
+    remNext:()=>{const sent=S.remSent&&S.remSent.w===S.avWeek?S.remSent.ids:[];const e=notSubEmps(S.avWeek).find(x=>phoneOf(x.id)&&!sent.includes(x.id));return e?['send','תזכורת זמינות בוואטסאפ ל'+e.name]:null},
+    empPinSend:d=>['pin','שליחת פרטי כניסה בוואטסאפ ל'+empName(d.id)],
+    sendPin:d=>['pin','שליחת פרטי כניסה בוואטסאפ ל'+((S.creds[+d.i]||{}).name||'עובד')],
+    copyCreds:()=>['pin','העתקת פרטי כניסה של עובדים']
+  };
+  Object.keys(simple).forEach(k=>{const f=A[k];if(!f)return;A[k]=function(...a){let r;try{r=simple[k](...a)}catch(e){r=null}const out=f.apply(this,a);if(r)LOG.add(r[0],r[1]);return out}});
+})();
 async function importCsv(text){
   text=text.replace(/^﻿/,'');
   const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
@@ -1320,6 +1474,7 @@ async function importCsv(text){
 }
 const C={ /* שינוי ערך בשדה */
   impFile(el){const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{importCsv(String(r.result));el.value=''};r.readAsText(f,'utf-8')},
+  logRange(el){S.logRange=el.value;S.logLimit=100;if(document.activeElement)document.activeElement.blur();render()},logUser(el){S.logUser=el.value;S.logLimit=100;if(document.activeElement)document.activeElement.blur();render()},
   empRole(el){S.empRole=el.value;if(document.activeElement)document.activeElement.blur();render()},empStatus(el){S.empStatus=el.value;if(document.activeElement)document.activeElement.blur();render()},
   avFrom(el){if(availLocked())return;S.draft[el.dataset.date].from=el.value},
   avTo(el){if(availLocked())return;S.draft[el.dataset.date].to=el.value},
@@ -1368,6 +1523,7 @@ document.addEventListener('input',ev=>{
   const el=ev.target;if(!el.dataset)return;
   if(el.dataset.inp==='avNote')S.draft[el.dataset.date].note=el.value;
   if(el.dataset.inp==='trayQ'){S.trayQ=el.value;const d=S.bDay,as=shiftsOn(d),t1=$('#tray'),t2=$('#tray2w');if(t1)t1.innerHTML=trayFreeHtml(d,as);if(t2)t2.innerHTML=trayAsgHtml(d,as);applyHl()}
+  if(el.dataset.inp==='logQ'){S.logQ=el.value;S.logLimit=100;const L=LOG.listHtml(),a=$('#log-list'),b=$('#log-cnt');if(a)a.innerHTML=L.h;if(b)b.textContent=L.n+' רשומות'}
   if(el.dataset.inp==='empQ'){S.empQ=el.value;const l=$('#emp-list');if(l)l.innerHTML=empListHtml()}
 });
 document.addEventListener('keydown',ev=>{
@@ -1375,11 +1531,17 @@ document.addEventListener('keydown',ev=>{
 });
 
 /* ================= הצגה ================= */
-async function startSession(user){
+async function startSession(user,explicit){
   const ud=await Store.db.doc('users/'+user.uid).get();
   if(!ud.exists||ud.data().active===false){await Store.auth.signOut();toast('אין הרשאת כניסה לחשבון הזה');return false}
   S.userId=ud.data().empId;S.view=null;S.tab=null;S.draftKey='';
   await Store.listen(!!ud.data().isManager,S.userId);
+  try{
+    const last=+localStorage.getItem('wp_lastopen')||0;
+    if(explicit)LOG.add('auth','התחברות למערכת'+(ud.data().isManager?' (מנהל)':''));
+    else if(Date.now()-last>30*60*1000)LOG.add('auth','פתיחת האפליקציה (חיבור קיים)');
+    localStorage.setItem('wp_lastopen',String(Date.now()));
+  }catch(e){}
   render();return true;
 }
 function render(){
