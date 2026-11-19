@@ -300,6 +300,23 @@ mark{background:#FFE08A}
 input[type=search]{width:100%;border:2px solid var(--line);border-radius:999px;padding:9px 16px;font-size:15px;background:#fff;-webkit-appearance:none;appearance:none}
 input[type=search]:focus{outline:3px solid #BFD9F7;border-color:var(--aqua)}
 div.miss{outline:0;border:2px solid #F3C1BC;border-radius:20px}div.miss.okk{border-color:#A9DDBC}
+/* v9.1 — סידור רגוע: בלי צבע לכל תפקיד, צבע רק לסטטוס */
+.lane .rb,.shift::before,.card .rb{display:none}
+.lane{box-shadow:0 2px 0 var(--ledge)}
+.lane.ok{box-shadow:0 2px 0 var(--ledge)}
+.lane.bad{box-shadow:0 2px 0 #F3C1BC}
+.lane.empty{outline:0}
+.lane-h b{font-weight:700}
+.tl{height:6px;background:#E6EFF2}
+.lane.ok .tl,.lane:not(.ok):not(.bad) .tl{background:#E6EFF2}
+.lane.bad .tl{background:repeating-linear-gradient(135deg,#FCEDEB 0 5px,#F8DAD6 5px 10px)}
+.tl i{background:#7FA9BF}
+.sc,.sc.hl{background:#F0F5F7}
+.sc.hl{background:#FFF2A8}
+.sc em{opacity:.7;font-weight:500}
+.lane .chip.ok{background:transparent;color:#4C8A66;padding:3px 4px}
+.lane .chip.bad{background:#FDE9E6}
+.miss{background:#FFF8F7}
 /* כניסה */
 .center-screen.lg{position:relative;overflow:hidden;max-width:none;background:var(--ink);color:#fff;padding:20px}
 .lg-in{position:relative;z-index:2;width:100%;max-width:400px;margin:auto}
@@ -320,7 +337,7 @@ div.miss{outline:0;border:2px solid #F3C1BC;border-radius:20px}div.miss.okk{bord
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='9.0';
+const APP_VERSION='9.1';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
