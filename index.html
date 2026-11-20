@@ -12,8 +12,13 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <title>White-Pool · משמרות</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&family=Rubik:wght@400;500;600;700;800&family=Suez+One&display=swap" rel="stylesheet">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src https://whitepoolshift.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+<script>if(window.top!==window.self){try{window.top.location=window.self.location}catch(e){document.documentElement.innerHTML=""}}</script>
+<style>@font-face{font-family:'Rubik';font-style:normal;font-weight:300 900;font-display:swap;src:url(fonts/rubik-he.woff2) format('woff2');unicode-range:U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F}
+@font-face{font-family:'Rubik';font-style:normal;font-weight:300 900;font-display:swap;src:url(fonts/rubik-lat.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:'Suez One';font-style:normal;font-weight:400;font-display:swap;src:url(fonts/suez-he.woff2) format('woff2');unicode-range:U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F}
+@font-face{font-family:'Suez One';font-style:normal;font-weight:400;font-display:swap;src:url(fonts/suez-lat.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+</style>
 <style>
 .ver{position:fixed;top:2px;left:6px;z-index:99;font-size:10px;opacity:.55;direction:ltr;color:#999;pointer-events:none;mix-blend-mode:difference}
 /* ===== פלטת צבעים — זמנית, תוחלף בצבעי האתר המקורי ===== */
@@ -337,7 +342,7 @@ div.miss{outline:0;border:2px solid #F3C1BC;border-radius:20px}div.miss.okk{bord
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='9.1';
+const APP_VERSION='10.0';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -367,6 +372,8 @@ let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add
 const COLS=['employees','roles','days','availability','shifts','weeks','settings'];
 const ALL=COLS.concat(['secrets','users','logs']);
 const emailOf=(p,v)=>'p'+normPhone(p)+(v>1?'v'+v:'')+'@wp-shifts.example';
+const strongOk=p=>p.length>=10&&/\p{L}/u.test(p)&&/\d/.test(p);
+const genStrong=()=>{const L='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz',N='23456789',all=L+N,x=new Uint32Array(14);crypto.getRandomValues(x);let t='';for(let i=0;i<12;i++)t+=all[x[i]%all.length];if(!/\d/.test(t))t=t.slice(0,11)+N[x[12]%N.length];if(!/[A-Za-z]/.test(t))t='K'+t.slice(1);return t};
 const genPin=()=>{const a=new Uint32Array(1);crypto.getRandomValues(a);return String(a[0]%1000000).padStart(6,'0')};
 
 /* ================= יומן פעולות (לוגים) ================= */
@@ -407,10 +414,10 @@ const LOG={bulk:null,
       }else if(c==='secrets'){
         if(isDel)return;const n=empName(id);
         if(!prev)L('pin','נוצר קוד כניסה ל'+n);
-        else if(prev.pin!==o.pin&&o.pin)L('pin','הונפק קוד כניסה חדש ל'+n);
+        else if((prev.v||1)!==(o.v||1)||(prev.uid!==o.uid&&o.uid&&prev.phone===o.phone&&prev.v===o.v&&false))L('pin','הונפק קוד כניסה חדש ל'+n);
         else if(prev.phone!==o.phone)L('pin','עודכן מספר הטלפון של '+n);
       }else if(c==='settings'){
-        if(id==='migr8')return;
+        if(id==='migr8'||id==='migSec')return;
         if(id==='hours')L('set','עדכון שעות פתיחה/סגירה הקבועות');
         else if(id==='notice')L('set','עדכון הודעת הזמינות לעובדים');
         else if(id==='prefs')L('set','נעילת זמינות אחרי הגשה: '+(o.lockAvail===false?'כבויה':'פעילה'));
@@ -478,7 +485,7 @@ const Store={
     if(!demo&&!(cfg&&cfg.apiKey))throw new Error('no-config');
     if(!demo){
       this.cfg=cfg;
-      const b='https://www.gstatic.com/firebasejs/9.23.0/';
+      const b='vendor/firebase/';
       await loadScript(b+'firebase-app-compat.js');
       await loadScript(b+'firebase-auth-compat.js');
       await loadScript(b+'firebase-firestore-compat.js');
@@ -491,7 +498,7 @@ const Store={
   },
   async listen(isMgr,empId){
     this.stop();this.reset();
-    const list=COLS.concat(isMgr?['secrets']:[]);
+    const list=COLS.concat(isMgr?['secrets','users']:[]);
     await Promise.all(list.map(c=>new Promise((res,rej)=>{
       let first=true,q=this.db.collection(c);
       if(c==='availability'&&!isMgr)q=q.where('empId','==',empId);
@@ -512,7 +519,7 @@ const Store={
   save(){try{localStorage.setItem('wp_demo',JSON.stringify(this.data))}catch(e){}},
   newId(c){return this.mode==='cloud'?this.db.collection(c).doc().id:uid()},
   set(c,id,obj){
-    obj=Object.assign({},obj,{id});const prev=this.data[c][id];this.data[c][id]=obj;LOG.w(c,id,obj,prev,false);
+    obj=Object.assign({},obj,{id});if(c==='shifts'&&obj.date)obj.ws=weekStart(obj.date);const prev=this.data[c][id];this.data[c][id]=obj;LOG.w(c,id,obj,prev,false);
     if(this.mode==='cloud')this.db.collection(c).doc(id).set(obj).catch(e=>{console.error(e);toast('שגיאת שמירה — '+(e.code==='permission-denied'?'אין הרשאה':'בדוק חיבור'))});
     else this.save();
     this.emit();
@@ -525,37 +532,34 @@ const Store={
   },
   useEmu(db,auth){db.useEmulator('127.0.0.1',8080);auth.useEmulator('http://127.0.0.1:9099',{disableWarnings:true})},
   secApp(){try{return firebase.app('sec')}catch(e){const a=firebase.initializeApp(this.cfg,'sec');if(this.cfg.emulator)a.auth().useEmulator('http://127.0.0.1:9099',{disableWarnings:true});return a}},
-  async provision(phone,v){ /* יוצר חשבון כניסה לעובד (אפליקציה משנית כדי לא לנתק את המנהל) */
-    const pin=genPin();
+  async provision(phone,v,strong){ /* יוצר חשבון כניסה לעובד (אפליקציה משנית כדי לא לנתק את המנהל) */
+    const pin=strong?genStrong():genPin();
     if(this.mode!=='cloud')return {uid:'demo-'+uid(),pin};
     const sec=this.secApp();
     const c=await sec.auth().createUserWithEmailAndPassword(emailOf(phone,v||1),pin);
     await sec.auth().signOut();return {uid:c.user.uid,pin};
   },
-  async resetPin(empId){ /* מחזיר קוד חדש */
-    const s=D('secrets')[empId],e=emp(empId);
-    if(this.mode!=='cloud'){const pin=genPin();this.set('secrets',empId,Object.assign({},s,{pin}));return pin}
-    if(s.pin){ /* הקוד ידוע — מחליפים סיסמה בחשבון הקיים */
-      const pin=genPin(),sec=this.secApp();
-      await sec.auth().signInWithEmailAndPassword(emailOf(s.phone,s.v||1),s.pin);
-      await sec.auth().currentUser.updatePassword(pin);await sec.auth().signOut();
-      this.set('secrets',empId,Object.assign({},s,{pin,selfSet:false}));return pin;
-    }
-    /* העובד החליף קוד בעצמו — פותחים חשבון חדש (גרסה הבאה) ומשביתים את הישן */
-    const v=(s.v||1)+1,r=await this.provision(s.phone,v);
-    if(e.uid)this.set('users',e.uid,{empId,isManager:false,active:false});
-    this.set('users',r.uid,{empId,isManager:!!e.isManager,active:e.active!==false});
-    this.set('employees',empId,Object.assign({},e,{uid:r.uid}));
-    this.set('secrets',empId,{phone:s.phone,pin:r.pin,v,selfSet:false});return r.pin;
+  async resetPin(empId){ /* קוד חדש: תמיד חשבון חדש (הקוד הישן לא נשמר), והקוד מוצג פעם אחת בלבד */
+    const s0=D('secrets')[empId]||{},e=emp(empId),v=(s0.v||1)+1;
+    if(v>MAX_V)throw {code:'app/max-resets'};
+    const r=await this.provision(s0.phone,v,!!e.isManager),old=uidOf(empId);
+    if(old&&D('users')[old])this.set('users',old,Object.assign({},D('users')[old],{active:false}));
+    this.set('users',r.uid,{empId,isManager:!!e.isManager,active:e.active!==false,mustChange:true});
+    this.set('secrets',empId,{phone:s0.phone,v,uid:r.uid});
+    if(e.uid){const ne=Object.assign({},e);delete ne.uid;this.set('employees',empId,ne)}
+    S.tmpPins[empId]=r.pin;return r.pin;
   }
 };
 const D=c=>Store.data[c];
 const vals=c=>Object.values(Store.data[c]);
 const phoneOf=id=>(D('secrets')[id]||{}).phone||'';
+const uidOf=id=>(D('secrets')[id]||{}).uid||((D('employees')[id]||{}).uid)||null;
+const MAX_V=6;
 const authMsg=e=>{const c=(e&&e.code)||'';
   if(/invalid-credential|wrong-password|user-not-found|invalid-email/.test(c))return 'טלפון או קוד שגויים';
   if(c==='auth/too-many-requests')return 'יותר מדי ניסיונות — נסה שוב בעוד כמה דקות';
   if(c==='auth/network-request-failed')return 'אין חיבור לאינטרנט';
+  if(c==='app/max-resets')return 'הגעת למספר המקסימלי של איפוסי קוד לעובד הזה';
   if(c==='auth/email-already-in-use')return 'המספר הזה כבר רשום כמשתמש';
   if(c==='auth/operation-not-allowed')return 'יש להפעיל Email/Password ב-Firebase Authentication';
   return 'שגיאה: '+(c||(e&&e.message)||'לא ידועה')};
@@ -655,7 +659,7 @@ const weekLabel=ws=>fmtDM(ws)+' – '+fmtDM(addDays(ws,6));
 const nextWeek=()=>addDays(weekStart(todayIso()),7);
 
 /* ================= מצב האפליקציה ================= */
-const S={empQ:'',empRole:'',empStatus:'all',avDay:null,needSetup:false,creds:[],userId:localStorage.getItem('wp_user')||null,view:null,tab:null,
+const S={empQ:'',empRole:'',empStatus:'all',avDay:null,needSetup:false,creds:[],userId:localStorage.getItem('wp_user')||null,tmpPins:{},forceChange:false,view:null,tab:null,
   bWeek:nextWeek(),bDay:null,avWeek:nextWeek(),msWeek:weekStart(todayIso()),
   draft:{},draftKey:'',draftSaved:false,missing:[],fatal:null};
 const me=()=>S.userId?emp(S.userId):null;
@@ -682,14 +686,14 @@ function viewSetup(){
   return '<div class="center-screen lg">'+LGB+'<div class="lg-in"><div class="logo-ball">🏊</div><h2 style="text-align:center">ברוכים הבאים ל-White-Pool משמרות</h2>'+
   '<p class="muted" style="text-align:center">הגדרה ראשונית: צור את המנהל/ת הראשון/ה. אחר כך אפשר להוסיף עובדים ומנהלים נוספים.</p>'+
   '<div class="card"><label class="f">שם מלא</label><input type="text" id="su-name" autocomplete="name">'+
-  '<label class="f">מספר טלפון</label><input type="tel" id="su-phone" inputmode="tel" placeholder="05X-XXXXXXX" autocomplete="tel">'+(Store.mode==='cloud'?'<label class="f">קוד כניסה אישי (6 ספרות)</label><input type="password" id="su-pin" inputmode="numeric" maxlength="6" autocomplete="new-password">':'')+
+  '<label class="f">מספר טלפון</label><input type="tel" id="su-phone" inputmode="tel" placeholder="05X-XXXXXXX" autocomplete="tel">'+(Store.mode==='cloud'?'<label class="f">סיסמה אישית (לפחות 10 תווים — אותיות ומספרים)</label><input type="password" id="su-pin" autocomplete="new-password">':'')+
   '<p class="muted">נוסיף גם את רשימת התפקידים הרגילה של המשחקייה (קופה, צמידים, מגלשות…) — אפשר לשנות אחר כך.</p>'+
   '<button class="btn block" data-act="setup">התחל</button></div></div></div>';
 }
 function viewLogin(){
   return '<div class="center-screen lg">'+LGB+'<div class="lg-in"><div class="logo-ball">🏊</div><h2 style="text-align:center">White-Pool · משמרות</h2>'+
   '<p class="muted" style="text-align:center">כניסה עם הטלפון והקוד האישי שקיבלת מהמנהל</p>'+
-  '<div class="card"><label class="f">מספר טלפון</label><input type="tel" id="lg-phone" inputmode="tel" placeholder="05X-XXXXXXX" autocomplete="username">'+(Store.mode==='cloud'?'<label class="f">קוד כניסה (6 ספרות)</label><input type="password" id="lg-pin" inputmode="numeric" maxlength="6" autocomplete="current-password">':'')+
+  '<div class="card"><label class="f">מספר טלפון</label><input type="tel" id="lg-phone" inputmode="tel" placeholder="05X-XXXXXXX" autocomplete="username">'+(Store.mode==='cloud'?'<label class="f">קוד כניסה</label><input type="password" id="lg-pin" autocomplete="current-password">':'')+
   '<div style="height:12px"></div><button class="btn block" data-act="login">כניסה</button>'+
   '<p class="muted" style="margin-bottom:0">אין לך קוד או שכחת אותו? פנה/י למנהל/ת המשמרות.</p></div>'+
   (Store.mode==='demo'?'<div class="banner">מצב בדיקה מקומי (?demo) — הנתונים נשמרים רק במכשיר הזה.</div>':'')+'</div></div>';
@@ -1013,7 +1017,7 @@ function viewMyAvail(){
   for(let i=0;i<7;i++){
     const date=addDays(S.avWeek,i),d=S.draft[date],hr=hoursFor(date);
     if(hr.closed)continue;
-    h+='<div class="card'+(S.missing.includes(date)?' miss':'')+'"><div class="row between"><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="muted">'+hr.open+'–'+hr.close+'</span></div>'+
+    h+='<div class="card'+(S.missing.includes(date)?' miss':'')+'"><div class="row between"><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="muted">'+esc(hr.open)+'–'+esc(hr.close)+'</span></div>'+
     '<div class="seg" style="margin-top:8px">'+
       '<button'+dis+' class="off'+(d&&d.t==='off'?' on':'')+'" data-act="avType" data-date="'+date+'" data-t="off">לא זמין</button>'+
       '<button'+dis+' class="all'+(d&&d.t==='all'?' on':'')+'" data-act="avType" data-date="'+date+'" data-t="all">כל היום</button>'+
@@ -1062,7 +1066,7 @@ function viewBuild(){
   h+='<div class="pills">';
   for(let i=0;i<7;i++){const d=addDays(ws,i);if(!shown(d))continue;h+='<button class="pill'+(d===date?' on':'')+(d===t?' today':'')+'" data-act="day" data-date="'+d+'">'+DOW[i]+'<b>'+parse(d).getDate()+'</b>'+(()=>{const st=dayStatus(d);if(hoursFor(d).closed)return '<span class="pc">סגור (חג)</span>';const hh=hoursFor(d);return '<span class="ph">'+hh.open+'–'+hh.close+'</span>'+(st.full?'<span class="pc"><i class="dot ok"></i>'+st.full+' מלא</span>':'')+(st.miss?'<span class="pc"><i class="dot bad"></i>'+st.miss+' חסר</span>':'')+'<span class="pc" style="color:var(--muted)">'+shiftsOn(d).length+' משמרות</span>'})()+'</button>'}
   const board=(S.bMode||'board')==='board';
-  h+='</div><div class="card"><div class="row between wrap"><div><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="muted">פתיחה '+hr.open+' · סגירה '+hr.close+(hr.custom?' (מותאם)':'')+'</span>'+(hr.label?' <span class="chip">'+esc(hr.label)+'</span>':'')+(hr.closed?' <span class="chip warn">המקום סגור ביום הזה</span>':'')+'</div>'+
+  h+='</div><div class="card"><div class="row between wrap"><div><h3 style="margin:0">'+fmtDay(date)+'</h3><span class="muted">פתיחה '+esc(hr.open)+' · סגירה '+esc(hr.close)+(hr.custom?' (מותאם)':'')+'</span>'+(hr.label?' <span class="chip">'+esc(hr.label)+'</span>':'')+(hr.closed?' <span class="chip warn">המקום סגור ביום הזה</span>':'')+'</div>'+
      '<div class="seg2"><button class="'+(board?'on':'')+'" data-act="bMode" data-m="board">לוח</button><button class="'+(board?'':'on')+'" data-act="bMode" data-m="list">רשימה</button></div></div>'+
      '<div class="row wrap" style="margin-top:10px"><button class="btn sm" data-act="autoDay">✨ פזר יום</button><button class="btn sec sm" data-act="autoWeek">✨ פזר שבוע</button>'+
      '<button class="btn ghost sm" data-act="dayHours">שעות היום</button><button class="btn ghost sm" data-act="copyDay">העתק מיום…</button><button class="btn ghost sm" data-act="clearDay">🧹 נקה יום</button><button class="btn ghost sm" data-act="clearWeek">🧹 נקה שבוע</button></div></div>';
@@ -1229,16 +1233,16 @@ function empModal(id){
   const e=id?emp(id):{name:'',roles:[],isManager:false,active:true},sec=id?D('secrets')[id]:null;
   openModal('<h2>'+(id?'עריכת עובד':'עובד חדש')+'</h2><input type="hidden" id="em-id" value="'+(id||'')+'">'+
     '<label class="f">שם מלא</label><input type="text" id="em-name" value="'+esc(e.name)+'">'+
-    '<label class="f">טלפון (לכניסה)</label><input type="tel" id="em-phone" inputmode="tel" value="'+esc(phoneOf(id))+'">'+(sec&&sec.pin?'<label class="f">קוד כניסה</label><div class="row wrap"><b style="letter-spacing:4px;font-size:20px">'+esc(sec.pin)+'</b><button class="btn sec sm" data-act="empPinSend" data-id="'+id+'">שלח בוואטסאפ</button><button class="btn ghost sm" data-act="empPinReset" data-id="'+id+'">אפס קוד</button></div>':(sec&&sec.selfSet?'<label class="f">קוד כניסה</label><div class="row wrap"><span class="muted">העובד החליף את הקוד בעצמו</span><button class="btn ghost sm" data-act="empPinReset" data-id="'+id+'">אפס קוד</button></div>':''))+
+    '<label class="f">טלפון (לכניסה)</label><input type="tel" id="em-phone" inputmode="tel" value="'+esc(phoneOf(id))+'">'+(sec?'<label class="f">קוד כניסה</label><div class="row wrap">'+(S.tmpPins[id]?'<b style="letter-spacing:3px;font-size:18px;direction:ltr">'+esc(S.tmpPins[id])+'</b><button class="btn sec sm" data-act="empPinSend" data-id="'+id+'">שלח בוואטסאפ</button>':'<span class="muted">'+((D('users')[uidOf(id)]||{}).mustChange?'ממתין להחלפת קוד ראשונה':'הקוד אישי ולא נשמר במערכת')+'</span>')+'<button class="btn ghost sm" data-act="empPinReset" data-id="'+id+'">הנפק קוד חדש</button></div>':'')+
     '<label class="f">תפקידים שהעובד יכול לעבוד בהם</label><div class="checks"><label style="font-weight:800"><input type="checkbox" id="em-allroles" data-chg="emAll"'+(sortedRoles().length&&sortedRoles().every(r=>(e.roles||[]).includes(r.id))?' checked':'')+'> כל התפקידים</label></div><div class="checks" style="margin-top:4px">'+sortedRoles().map(r=>'<label><input type="checkbox" class="em-role" data-chg="emOne" value="'+r.id+'"'+((e.roles||[]).includes(r.id)?' checked':'')+'>'+esc(r.name)+'</label>').join('')+'</div>'+
     '<label class="f">מקסימום שעות עבודה ביום</label><select id="em-max">'+(()=>{const cur=+e.maxHours||8;let o='';for(let h=4;h<=16;h+=0.5)o+='<option value="'+h+'"'+(h===cur?' selected':'')+'>'+h+' שעות</option>';return o})()+'</select>'+
     '<div class="checks" style="margin-top:12px"><label><input type="checkbox" id="em-mgr"'+(e.isManager?' checked':'')+'> מנהל/ת (בונה סידור)</label>'+(id?'<label><input type="checkbox" id="em-active"'+(e.active!==false?' checked':'')+'> פעיל/ה</label>':'')+'</div>'+
     '<div style="height:14px"></div><div class="row"><button class="btn grow" data-act="empSave">שמור</button><button class="btn ghost" data-act="closeModal">ביטול</button></div>');
 }
-function loginMsg(c){return 'שלום '+c.name.split(' ')[0]+', כניסה לאפליקציית המשמרות של White-Pool:\n'+location.origin+location.pathname+'\nטלפון: '+c.phone+'\nקוד כניסה: '+c.pin}
+function loginMsg(c){return 'שלום '+c.name.split(' ')[0]+', כניסה לאפליקציית המשמרות של White-Pool:\n'+location.origin+location.pathname+'\nטלפון: '+c.phone+'\nקוד כניסה זמני: '+c.pin+'\n(בכניסה הראשונה תתבקש לבחור קוד אישי)'}
 function credsModal(list){
   S.creds=list;
-  openModal('<h2>קודי כניסה חדשים</h2><p class="muted">שלח לכל עובד את הקוד שלו (בוואטסאפ). הקוד נשמר ותוכל לראות אותו שוב בעריכת העובד.</p>'+
+  openModal('<h2>קודי כניסה חדשים</h2><p class="muted">שלח לכל עובד את הקוד שלו (בוואטסאפ). הקוד מוצג כאן פעם אחת בלבד ואינו נשמר במערכת. בכניסה הראשונה העובד יבחר קוד אישי משלו.</p>'+
     list.map((c,i)=>'<div class="row between" style="padding:7px 0;border-bottom:1px solid var(--line)"><div class="grow"><b>'+esc(c.name)+'</b><div class="muted">'+esc(c.phone)+' · <b style="letter-spacing:2px">'+esc(c.pin)+'</b></div></div><button class="btn sec sm" data-act="sendPin" data-i="'+i+'">וואטסאפ</button></div>').join('')+
     '<div class="row" style="margin-top:12px"><button class="btn sec grow" data-act="copyCreds">העתק הכול</button><button class="btn ghost" data-act="closeModal">סגור</button></div>');
 }
@@ -1250,6 +1254,10 @@ function exportModal(title,text){
 
 /* ================= פעולות ================= */
 const SEED_ROLES=['קופה','צמידים','מגלשות','אחמ״שית קומה תחתונה','תיגבור ואיפוס','אבובים','חצי פייפ','קיר טיפוס','סליידר','מסוע','טרמפולינות','אייר בג','אחמ״ש כללי'];
+const failState=()=>{try{return JSON.parse(localStorage.getItem('wp_fail'))||{n:0,t:0}}catch(e){return {n:0,t:0}}};
+const noteFail=()=>{const f=failState();try{localStorage.setItem('wp_fail',JSON.stringify({n:f.n+1,t:Date.now()}))}catch(e){}};
+const clearFail=()=>{try{localStorage.removeItem('wp_fail')}catch(e){}};
+const lockLeft=()=>{const f=failState();if(f.n<5)return 0;return Math.max(0,f.t+Math.min(900,30*Math.pow(2,f.n-5))*1000-Date.now())};
 function loginAs(id){S.userId=id;localStorage.setItem('wp_user',id);S.view=null;S.tab=null;S.draftKey='';render()}
 const A={
   async setup(){
@@ -1258,14 +1266,14 @@ const A={
     const empId=Store.newId('employees');
     if(Store.mode==='cloud'){
       const pin=($('#su-pin').value||'').trim();
-      if(!/^\d{6}$/.test(pin))return toast('הקוד חייב להיות 6 ספרות');
+      if(!strongOk(pin))return toast('הסיסמה חייבת להכיל לפחות 10 תווים, אותיות ומספרים');
       let cred;try{cred=await Store.auth.createUserWithEmailAndPassword(emailOf(phone,1),pin)}catch(e){return toast(authMsg(e))}
       const uid=cred.user.uid,db=Store.db;
       try{
-        await db.doc('users/'+uid).set({empId,isManager:true,active:true});
+        await db.doc('users/'+uid).set({empId,isManager:true,active:true,strong:true});
         const b=db.batch();
-        b.set(db.doc('employees/'+empId),{id:empId,name,roles:[],isManager:true,active:true,uid});
-        b.set(db.doc('secrets/'+empId),{id:empId,phone,pin,v:1});
+        b.set(db.doc('employees/'+empId),{id:empId,name,roles:[],isManager:true,active:true});
+        b.set(db.doc('secrets/'+empId),{id:empId,phone,v:1,uid});
         SEED_ROLES.forEach((n,i)=>{const r=db.collection('roles').doc();b.set(r,{id:r.id,name:n,order:i})});
         b.set(db.doc('meta/bootstrap'),{at:Date.now()});
         await b.commit();
@@ -1278,8 +1286,8 @@ const A={
       S.needSetup=false;await startSession(cred.user,true);
     }else{
       SEED_ROLES.forEach((n,i)=>Store.set('roles',Store.newId('roles'),{name:n,order:i}));
-      Store.set('employees',empId,{name,isManager:true,roles:[],active:true,uid:'demo-'+empId});
-      Store.set('secrets',empId,{phone,pin:''});
+      Store.set('employees',empId,{name,isManager:true,roles:[],active:true});
+      Store.set('secrets',empId,{phone,v:1});
       loginAs(empId);
     }
   },
@@ -1287,13 +1295,17 @@ const A={
     const p=$('#lg-phone').value;
     if(Store.mode==='cloud'){
       const pin=($('#lg-pin').value||'').trim();
-      if(normPhone(p).length<9||pin.length<6)return toast('נא למלא טלפון וקוד (6 ספרות)');
-      let err=null;
-      for(let v=1;v<=3;v++){
-        try{await Store.auth.signInWithEmailAndPassword(emailOf(p,v),pin);err=null;break}
+      if(normPhone(p).length<9||pin.length<6)return toast('נא למלא טלפון וקוד כניסה');
+      const left=lockLeft();if(left>0)return toast('יותר מדי ניסיונות. נסה שוב בעוד '+Math.ceil(left/1000)+' שניות');
+      const hk='wp_v_'+normPhone(p);let hint=1;try{hint=+localStorage.getItem(hk)||1}catch(e){}
+      const order=[hint].concat([1,2,3,4,5,6].filter(x=>x!==hint));
+      let err=null,okv=0;
+      for(const v of order){
+        try{await Store.auth.signInWithEmailAndPassword(emailOf(p,v),pin);err=null;okv=v;break}
         catch(e){err=e;if(!/invalid-credential|wrong-password|user-not-found|invalid-email/.test(e.code||''))break}
       }
-      if(err)return toast(authMsg(err));
+      if(err){if(/invalid-credential|wrong-password|user-not-found|invalid-email/.test(err.code||''))noteFail();return toast(authMsg(err))}
+      clearFail();try{localStorage.setItem(hk,String(okv))}catch(e){}
       await startSession(Store.auth.currentUser,true);
     }else{
       const id=Object.keys(D('secrets')).find(k=>samePhone(D('secrets')[k].phone,p)&&emp(k)&&emp(k).active!==false);
@@ -1314,7 +1326,7 @@ const A={
     render();
   },
   day(d){S.bDay=d.date;render()},
-  closeModal(){closeModal()},
+  closeModal(){if(S.forceChange)return;closeModal()},
   /* זמינות עובד */
   avType(d){
     if(availLocked())return toast('הזמינות נעולה לשינוי');
@@ -1351,13 +1363,13 @@ const A={
     if(Store.mode!=='cloud')Store.save();render();toast('נמחקו '+old.length+' לוגים');
   },
   remAll(){S.remSent=(S.remSent&&S.remSent.w===S.avWeek)?S.remSent:{w:S.avWeek,ids:[]};remModal()},
-  remNext(){const ws=S.avWeek,sent=S.remSent&&S.remSent.w===ws?S.remSent:(S.remSent={w:ws,ids:[]});const e=notSubEmps(ws).find(x=>phoneOf(x.id)&&!sent.ids.includes(x.id));if(!e)return;sent.ids.push(e.id);window.open('https://wa.me/'+intlPhone(phoneOf(e.id))+'?text='+encodeURIComponent(remMsg(e)),'_blank');remModal()},
-  remOne(d){const e=emp(d.id),ws=S.avWeek,sent=S.remSent&&S.remSent.w===ws?S.remSent:(S.remSent={w:ws,ids:[]});if(!sent.ids.includes(e.id))sent.ids.push(e.id);window.open('https://wa.me/'+intlPhone(phoneOf(e.id))+'?text='+encodeURIComponent(remMsg(e)),'_blank');remModal()},
+  remNext(){const ws=S.avWeek,sent=S.remSent&&S.remSent.w===ws?S.remSent:(S.remSent={w:ws,ids:[]});const e=notSubEmps(ws).find(x=>phoneOf(x.id)&&!sent.ids.includes(x.id));if(!e)return;sent.ids.push(e.id);window.open('https://wa.me/'+intlPhone(phoneOf(e.id))+'?text='+encodeURIComponent(remMsg(e)),'_blank','noopener,noreferrer');remModal()},
+  remOne(d){const e=emp(d.id),ws=S.avWeek,sent=S.remSent&&S.remSent.w===ws?S.remSent:(S.remSent={w:ws,ids:[]});if(!sent.ids.includes(e.id))sent.ids.push(e.id);window.open('https://wa.me/'+intlPhone(phoneOf(e.id))+'?text='+encodeURIComponent(remMsg(e)),'_blank','noopener,noreferrer');remModal()},
   remCopy(){const t='היי, נא להגיש זמינות לשבוע '+weekLabel(S.avWeek)+' באפליקציה: '+location.href.split('#')[0].split('?')[0];(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('ההודעה הועתקה ✓')).catch(()=>toast('לא ניתן להעתיק'))},
   remind(d){
     const e=emp(d.id);if(!phoneOf(d.id))return toast('לעובד הזה אין טלפון');const url=location.href.split('#')[0];
     const t='היי '+e.name.split(' ')[0]+', נא להגיש זמינות לשבוע '+weekLabel(S.avWeek)+' באפליקציה: '+url;
-    window.open('https://wa.me/'+intlPhone(phoneOf(d.id))+'?text='+encodeURIComponent(t),'_blank');
+    window.open('https://wa.me/'+intlPhone(phoneOf(d.id))+'?text='+encodeURIComponent(t),'_blank','noopener,noreferrer');
   },
   availView(d){
     const e=emp(d.id);let h='<h2>'+esc(e.name)+' · שבוע '+weekLabel(S.avWeek)+'</h2>';
@@ -1492,7 +1504,7 @@ const A={
   },
   exportDay(){exportModal('שיתוף '+fmtDay(S.bDay),dayText(S.bDay))},
   exportWeek(){const t=weekText(S.bWeek);if(!t)return toast('אין משמרות בשבוע הזה');exportModal('שיתוף שבוע '+weekLabel(S.bWeek),t)},
-  shareWa(){window.open('https://wa.me/?text='+encodeURIComponent(S.exp),'_blank')},
+  shareWa(){window.open('https://wa.me/?text='+encodeURIComponent(S.exp),'_blank','noopener,noreferrer')},
   async copyTxt(){
     try{
       if(window.ClipboardItem&&navigator.clipboard.write){
@@ -1507,24 +1519,26 @@ const A={
   empEdit(d){empModal(d.id)},
   impPick(){$('#impFile').click()},
   pinChange(){
-    openModal('<h2>החלפת קוד כניסה</h2><p class="muted">הקוד החדש יהיה ידוע רק לך. אם תשכח אותו — המנהל יוכל להנפיק לך קוד חדש.</p>'+
-     '<label class="f">קוד נוכחי</label><input type="password" id="pc-old" inputmode="numeric" maxlength="6" autocomplete="current-password">'+
-     '<label class="f">קוד חדש (6 ספרות)</label><input type="password" id="pc-new" inputmode="numeric" maxlength="6" autocomplete="new-password">'+
-     '<label class="f">אישור קוד חדש</label><input type="password" id="pc-new2" inputmode="numeric" maxlength="6" autocomplete="new-password">'+
-     '<div style="height:14px"></div><div class="row"><button class="btn grow" data-act="pinSave">שמור</button><button class="btn ghost" data-act="closeModal">ביטול</button></div>');
+    const f=S.forceChange,mgr=!!(me()&&me().isManager);
+    openModal('<h2>'+(f?'בחירת קוד כניסה חדש':'החלפת קוד כניסה')+'</h2><p class="muted">'+(f?(mgr?'כדי להגן על המערכת, למנהלים נדרשת סיסמה אישית: לפחות 10 תווים, אותיות ומספרים.':'הקוד שקיבלת הוא זמני. בחר/י קוד אישי של 6 ספרות שרק את/ה מכיר/ה.'):'הקוד החדש יהיה ידוע רק לך. אם תשכח אותו — המנהל יוכל להנפיק לך קוד חדש.')+'</p>'+
+     '<label class="f">קוד נוכחי</label><input type="password" id="pc-old" autocomplete="current-password">'+
+     '<label class="f">'+(mgr?'סיסמה חדשה (10 תווים ויותר, אותיות ומספרים)':'קוד חדש (6 ספרות)')+'</label><input type="password" id="pc-new"'+(mgr?'':' inputmode="numeric" maxlength="6"')+' autocomplete="new-password">'+
+     '<label class="f">אישור</label><input type="password" id="pc-new2"'+(mgr?'':' inputmode="numeric" maxlength="6"')+' autocomplete="new-password">'+
+     '<div style="height:14px"></div><div class="row"><button class="btn grow" data-act="pinSave">שמור</button>'+(f?'<button class="btn ghost" data-act="logout">יציאה</button>':'<button class="btn ghost" data-act="closeModal">ביטול</button>')+'</div>');
   },
   async pinSave(){
-    const o=($('#pc-old').value||'').trim(),n=($('#pc-new').value||'').trim(),n2=($('#pc-new2').value||'').trim();
+    const o=($('#pc-old').value||'').trim(),n=($('#pc-new').value||'').trim(),n2=($('#pc-new2').value||'').trim(),mgr=!!(me()&&me().isManager);
     if(Store.mode!=='cloud')return toast('לא זמין במצב בדיקה');
-    if(!/^\d{6}$/.test(n))return toast('הקוד החדש חייב להיות 6 ספרות');
-    if(n!==n2)return toast('אישור הקוד לא תואם');
+    if(mgr?!strongOk(n):!/^\d{6}$/.test(n))return toast(mgr?'הסיסמה חייבת להכיל לפחות 10 תווים, אותיות ומספרים':'הקוד החדש חייב להיות 6 ספרות');
+    if(n!==n2)return toast('האישור לא תואם');
     if(n===o)return toast('הקוד החדש זהה לנוכחי');
+    const u=Store.auth.currentUser;
     try{
-      const u=Store.auth.currentUser;
       await u.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(u.email,o));
       await u.updatePassword(n);
     }catch(e){return toast(authMsg(e))}
-    try{await Store.db.doc('secrets/'+S.userId).update({pin:'',selfSet:true})}catch(e){console.error(e)}
+    try{await Store.db.doc('users/'+u.uid).update(Object.assign({mustChange:false},mgr?{strong:true}:{}))}catch(e){console.error(e);toast('הקוד הוחלף, אך העדכון לא נשמר — ייתכן שתתבקש להחליף שוב')}
+    S.forceChange=false;
     LOG.add('pin','החלפת קוד כניסה עצמית');closeModal();toast('הקוד הוחלף ✓');
   },
   async empSave(){
@@ -1535,25 +1549,26 @@ const A={
     const others=vals('employees').filter(e=>e.id!==id&&e.isManager&&e.active!==false).length;
     if(!others&&(!isManager||!active))return toast('חייב להישאר לפחות מנהל/ת פעיל/ה אחד/ת');
     const roles=[...document.querySelectorAll('.em-role:checked')].map(x=>x.value);
-    let uid=old&&old.uid,newCred=null;
+    let uid=uidOf(id),newCred=null;
     const phoneChanged=phone&&!samePhone(phoneOf(id),phone);
     if(phone&&(!uid||phoneChanged)){
-      try{newCred=await Store.provision(phone)}catch(e){return toast(authMsg(e))}
-      if(uid)Store.set('users',uid,{empId:id,isManager:false,active:false}); /* חשבון ישן — מושבת */
-      uid=newCred.uid;Store.set('secrets',id,{phone,pin:newCred.pin,v:1});
+      try{newCred=await Store.provision(phone,1,isManager)}catch(e){return toast(authMsg(e))}
+      if(uid&&D('users')[uid])Store.set('users',uid,Object.assign({},D('users')[uid],{active:false})); /* חשבון ישן — מושבת */
+      uid=newCred.uid;Store.set('secrets',id,{phone,v:1,uid});S.tmpPins[id]=newCred.pin;
     }
-    Store.set('employees',id,Object.assign({},old,{name,roles,isManager,active,maxHours:+$('#em-max').value||8,uid:uid||null}));
-    if(uid)Store.set('users',uid,{empId:id,isManager,active});
+    const ne=Object.assign({},old,{name,roles,isManager,active,maxHours:+$('#em-max').value||8});delete ne.uid;
+    Store.set('employees',id,ne);
+    if(uid)Store.set('users',uid,Object.assign({},D('users')[uid],{empId:id,isManager,active},newCred?{mustChange:true}:{}));
     if(newCred)credsModal([{name,phone,pin:newCred.pin}]);else closeModal();
   },
   noticeSave(){Store.set('settings','notice',{text:$('#notice-t').value});toast('ההודעה נשמרה ✓')},
   noticeReset(){Store.set('settings','notice',{text:DEF_NOTICE});render();toast('שוחזרה ברירת המחדל')},
-  empPinSend(d){const s=D('secrets')[d.id];window.open('https://wa.me/'+intlPhone(s.phone)+'?text='+encodeURIComponent(loginMsg({name:empName(d.id),phone:s.phone,pin:s.pin})),'_blank')},
+  empPinSend(d){const s=D('secrets')[d.id],pin=S.tmpPins[d.id];if(!pin)return toast('הקוד לא נשמר. הנפק קוד חדש');window.open('https://wa.me/'+intlPhone(s.phone)+'?text='+encodeURIComponent(loginMsg({name:empName(d.id),phone:s.phone,pin})),'_blank','noopener,noreferrer')},
   async empPinReset(d){
-    if(!confirm('לאפס את הקוד של '+empName(d.id)+'? הקוד הישן יפסיק לעבוד.'))return;
+    if(!confirm('להנפיק קוד חדש ל'+empName(d.id)+'? הקוד הקודם יפסיק לעבוד.'))return;
     try{const pin=await Store.resetPin(d.id);credsModal([{name:empName(d.id),phone:phoneOf(d.id),pin}])}catch(e){toast(authMsg(e))}
   },
-  sendPin(d){const c=S.creds[+d.i];window.open('https://wa.me/'+intlPhone(c.phone)+'?text='+encodeURIComponent(loginMsg(c)),'_blank')},
+  sendPin(d){const c=S.creds[+d.i];window.open('https://wa.me/'+intlPhone(c.phone)+'?text='+encodeURIComponent(loginMsg(c)),'_blank','noopener,noreferrer')},
   async copyCreds(){
     const t=S.creds.map(c=>c.name+' | '+c.phone+' | '+c.pin).join('\n');
     try{await navigator.clipboard.writeText(t)}catch(e){}
@@ -1618,11 +1633,11 @@ async function importCsv(text){
     const roles=rn.map(n=>{if(!byName[n]){const id=Store.newId('roles');Store.set('roles',id,{name:n,order:vals('roles').length});byName[n]=id}return byName[n]});
     const id=Store.newId('employees');let uid=null;
     if(phone){
-      try{const r=await Store.provision(phone);uid=r.uid;Store.set('secrets',id,{phone,pin:r.pin,v:1});creds.push({name,phone,pin:r.pin})}
+      try{const r=await Store.provision(phone,1,false);uid=r.uid;Store.set('secrets',id,{phone,v:1,uid});S.tmpPins[id]=r.pin;creds.push({name,phone,pin:r.pin})}
       catch(e){console.error(e);failed++;continue}
     }
-    Store.set('employees',id,{name,roles,isManager:false,active:true,uid});
-    if(uid)Store.set('users',uid,{empId:id,isManager:false,active:true});
+    Store.set('employees',id,{name,roles,isManager:false,active:true});
+    if(uid)Store.set('users',uid,{empId:id,isManager:false,active:true,mustChange:true});
     have.add(name);added++;
   }
   toast('יובאו '+added+' עובדים'+(skipped?' · דולגו '+skipped:'')+(failed?' · נכשלו '+failed:''));
@@ -1690,15 +1705,31 @@ document.addEventListener('keydown',ev=>{
 async function startSession(user,explicit){
   const ud=await Store.db.doc('users/'+user.uid).get();
   if(!ud.exists||ud.data().active===false){await Store.auth.signOut();toast('אין הרשאת כניסה לחשבון הזה');return false}
-  S.userId=ud.data().empId;S.view=null;S.tab=null;S.draftKey='';
-  await Store.listen(!!ud.data().isManager,S.userId);
+  const U=ud.data();S.userId=U.empId;S.view=null;S.tab=null;S.draftKey='';
+  S.forceChange=U.mustChange===true||(!!U.isManager&&U.strong!==true);
+  await Store.listen(!!U.isManager,S.userId);
   try{
     const last=+localStorage.getItem('wp_lastopen')||0;
     if(explicit)LOG.add('auth','התחברות למערכת'+(ud.data().isManager?' (מנהל)':''));
     else if(Date.now()-last>30*60*1000)LOG.add('auth','פתיחת האפליקציה (חיבור קיים)');
     localStorage.setItem('wp_lastopen',String(Date.now()));
   }catch(e){}
-  render();return true;
+  if(U.isManager)migrateSecurity().catch(e=>console.warn('mig',e));
+  render();if(S.forceChange)setTimeout(()=>A.pinChange(),0);return true;
+}
+async function migrateSecurity(){ /* חד-פעמי: מסיר קודים שמורים, מעביר uid ל-secrets, משלים ws למשמרות ישנות */
+  if(D('settings').migSec)return;
+  LOG.bulk={add:0,del:0};
+  try{
+    vals('secrets').forEach(x=>{
+      const e=emp(x.id),uid=x.uid||(e&&e.uid)||null;
+      if(x.pin&&uid&&D('users')[uid])Store.set('users',uid,Object.assign({},D('users')[uid],{mustChange:true}));
+      if(x.pin||'selfSet' in x||!x.uid&&uid){const n={phone:x.phone,v:x.v||1};if(uid)n.uid=uid;Store.set('secrets',x.id,n)}
+      if(e&&e.uid){const ne=Object.assign({},e);delete ne.uid;Store.set('employees',e.id,ne)}
+    });
+    vals('shifts').filter(x=>!x.ws&&x.date).forEach(x=>Store.set('shifts',x.id,x));
+  }finally{LOG.bulk=null}
+  Store.set('settings','migSec',{at:Date.now()});
 }
 function render(){
   const app=$('#app');

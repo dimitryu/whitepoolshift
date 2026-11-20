@@ -1,5 +1,5 @@
-const CACHE='wp-shifts-v9.1';
-const ASSETS=['./','./index.html','./manifest.json','./firebase-config.js','./icons/icon-192.png'];
+const CACHE='wp-shifts-v10.0';
+const ASSETS=['./','./index.html','./manifest.json','./firebase-config.js','./icons/icon-192.png','./vendor/firebase/firebase-app-compat.js','./vendor/firebase/firebase-auth-compat.js','./vendor/firebase/firebase-firestore-compat.js','./fonts/rubik-he.woff2','./fonts/rubik-lat.woff2','./fonts/suez-he.woff2','./fonts/suez-lat.woff2'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))));self.clients.claim()});
 self.addEventListener('fetch',e=>{
