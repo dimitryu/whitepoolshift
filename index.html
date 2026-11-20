@@ -335,6 +335,8 @@ div.miss{outline:0;border:2px solid #F3C1BC;border-radius:20px}div.miss.okk{bord
 .lb3{right:-30px;top:-24px;width:104px;height:104px;--bc:#2E86E6}.lb4{right:-36px;bottom:90px;width:110px;height:110px;--bc:#35B56A}
 .lb5{left:-48px;bottom:-30px;width:130px;height:130px;--bc:#FFC531}.lb6{right:80px;bottom:-26px;width:70px;height:70px;--bc:#EF4B3F}.lb7{left:110px;bottom:20px;width:50px;height:50px;--bc:#2E86E6}
 
+.simbar{background:#FFF4D6;border:2px dashed #E0A800;color:#5a4300;border-radius:14px;padding:10px 12px;margin:0 0 12px;position:sticky;top:0;z-index:20}
+.simbar select{width:auto;min-width:140px;padding:6px 10px}
 .pw{position:relative;display:block}
 .pw input{padding-left:44px!important}
 .pw-eye{position:absolute;left:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;border:0;background:transparent;border-radius:8px;cursor:pointer;display:none;align-items:center;justify-content:center;color:#5b6573;padding:0}
@@ -350,7 +352,7 @@ div.miss{outline:0;border:2px solid #F3C1BC;border-radius:20px}div.miss.okk{bord
 <div id="toast"></div>
 <script src="firebase-config.js"></script>
 <script>
-const APP_VERSION='10.1';
+const APP_VERSION='10.2';
 document.addEventListener('DOMContentLoaded',()=>{const v=document.createElement('div');v.className='ver';v.textContent='v'+APP_VERSION;document.body.appendChild(v)});
 "use strict";
 /* ================= עזרים ================= */
@@ -512,19 +514,19 @@ const Store={
       if(c==='availability'&&!isMgr)q=q.where('empId','==',empId);
       this.unsubs.push(q.onSnapshot(s=>{
         const o={};s.forEach(d=>{o[d.id]=Object.assign({},d.data(),{id:d.id})});
-        this.data[c]=o;
-        if(first){first=false;res()}else this.emit();
+        if(this.sim)this.realData[c]=o;else this.data[c]=o;
+        if(first){first=false;res()}else if(!this.sim)this.emit();
       },err=>{console.error(err);if(first){first=false;rej(err)}else if(this.onError)this.onError(err)}));
     })));
     if(isAdmin){ /* יומן פעולות (מנהל ראשי בלבד) — לא חוסם כניסה אם הכללים עוד לא עודכנו */
       this.logsErr=null;
       this.unsubs.push(this.db.collection('logs').orderBy('ts','desc').limit(1500).onSnapshot(s=>{
-        const o={};s.forEach(d=>{o[d.id]=Object.assign({},d.data(),{id:d.id})});this.data.logs=o;this.logsErr=null;if(S.tab==='logs')this.emit();
+        const o={};s.forEach(d=>{o[d.id]=Object.assign({},d.data(),{id:d.id})});if(this.sim)this.realData.logs=o;else{this.data.logs=o;this.logsErr=null;if(S.tab==='logs')this.emit()}
       },err=>{console.error(err);this.logsErr=err.code||'error';if(S.tab==='logs')this.emit()}));
     }
   },
   stop(){this.unsubs.forEach(f=>f());this.unsubs=[]},
-  save(){try{localStorage.setItem('wp_demo',JSON.stringify(this.data))}catch(e){}},
+  save(){if(this.sim)return;try{localStorage.setItem('wp_demo',JSON.stringify(this.data))}catch(e){}},
   newId(c){return this.mode==='cloud'?this.db.collection(c).doc().id:uid()},
   set(c,id,obj){
     obj=Object.assign({},obj,{id});if(c==='shifts'&&obj.date)obj.ws=weekStart(obj.date);const prev=this.data[c][id];this.data[c][id]=obj;LOG.w(c,id,obj,prev,false);
@@ -725,7 +727,7 @@ function viewShell(){
     '<div class="top-actions">'+(u.isManager?'<button class="icon-btn" data-act="switchView">'+(S.view==='manager'?'כעובד':'כמנהל')+'</button>':'')+
     '<button class="icon-btn" data-act="pinChange" aria-label="החלפת קוד">'+KEYI+'</button><button class="icon-btn" data-act="logout">יציאה</button></div></div></header>'+
     '<nav class="tabs">'+tabs.map(t=>'<button class="tab'+(S.tab===t[0]?' on':'')+'" data-act="tab" data-t="'+t[0]+'"><span>'+TICON[t[0]]+'</span>'+t[1]+'</button>').join('')+'</nav>'+
-    '<main'+(S.tab==='build'&&(S.bMode||'board')==='board'?' class="wide"':'')+'>'+(Store.mode==='demo'?'<div class="banner">מצב בדיקה מקומי (?demo) — הנתונים נשמרים רק במכשיר הזה.</div>':'')+body+'</main></div>';
+    '<main'+(S.tab==='build'&&(S.bMode||'board')==='board'?' class="wide"':'')+'>'+(Store.sim?simBanner():Store.mode==='demo'?'<div class="banner">מצב בדיקה מקומי (?demo) — הנתונים נשמרים רק במכשיר הזה.</div>':'')+body+'</main></div>';
 }
 function weekBar(key,ws){
   return '<div class="weekbar"><button class="nav-btn" data-act="wk" data-key="'+key+'" data-d="7" aria-label="שבוע הבא">›</button>'+
@@ -1186,8 +1188,17 @@ function specialDaysCard(){
   return h;
 }
 /* ---- מנהל: הגדרות ---- */
+function simBanner(){
+  const n=vals('employees').filter(e=>e.sim).length;
+  return '<div class="simbar"><div><b>🧪 מצב סימולציה</b> — '+n+' עובדים דמיוניים. הכול רץ בזיכרון בלבד: שום דבר לא נשמר ולא נראה לעובדים אמיתיים.</div>'+
+    '<div class="row wrap" style="gap:8px;margin-top:8px"><select data-chg="simScenario" aria-label="תרחיש">'+Object.keys(SIM_SCEN).map(k=>'<option value="'+k+'"'+(SIMN.scen===k?' selected':'')+'>'+SIM_SCEN[k].label+'</option>').join('')+'</select>'+
+    '<button class="btn sec sm" data-act="simReseed">🎲 נתונים חדשים</button><button class="btn sec sm" data-act="simClear">🧹 נקה משמרות</button><button class="btn sm" data-act="simExit">יציאה מהסימולציה</button></div></div>';
+}
+function simCard(){
+  return '<div class="card"><h3>🧪 סימולציית פיזור (ADMIN)</h3><p class="muted">מדמה פיזור משמרות על עובדים דמיוניים: חלקם פנויים כל היום, חלקם בשעות מסוימות, חלקם חסמו ימים, עם תפקידים שונים. הפיזור רץ באותם כללים בדיוק כמו בעבודה אמיתית. הנתונים האמיתיים לא נוגעים ולא משתנים, וביציאה הכול נמחק.</p><button class="btn" data-act="simStart">התחל סימולציה</button></div>';
+}
 function viewSettings(){
-  let h='<h2>הגדרות</h2>'+specialDaysCard();
+  let h='<h2>הגדרות</h2>'+specialDaysCard()+(Store.mode==='cloud'&&S.isAdmin?simCard():'');
   h+='<div class="card"><h3>הודעה לעובדים (בדף "הזמינות שלי")</h3><p class="muted">הטקסט מוצג לכל עובד בראש דף הזמינות, בכל שבוע. שורה חדשה = שורה חדשה בהודעה.</p><textarea id="notice-t" rows="7" style="width:100%">'+esc(noticeText())+'</textarea><div class="row" style="margin-top:8px"><button class="btn sm" data-act="noticeSave">שמור הודעה</button><button class="btn ghost sm" data-act="noticeReset">שחזר ברירת מחדל</button></div></div>';
   h+='<div class="card"><h3>הגשת זמינות</h3><label class="row" style="gap:8px"><input type="checkbox" style="width:auto" data-chg="lockAvail"'+(lockOn()?' checked':'')+'> לנעול את הזמינות של עובד אחרי ששלח אותה (לא יוכל לשנות בעצמו)</label><p class="muted" style="margin-top:6px">ההגדרה חלה על כל העובדים.</p></div>';
   h+='<div class="card"><h3>תפקידים / מתקנים</h3>';
@@ -1272,8 +1283,77 @@ const SEED_ROLES=['קופה','צמידים','מגלשות','אחמ״שית קו�
 const failState=()=>{try{return JSON.parse(localStorage.getItem('wp_fail'))||{n:0,t:0}}catch(e){return {n:0,t:0}}};
 const noteFail=()=>{const f=failState();try{localStorage.setItem('wp_fail',JSON.stringify({n:f.n+1,t:Date.now()}))}catch(e){}};
 const clearFail=()=>{try{localStorage.removeItem('wp_fail')}catch(e){}};
-const lockLeft=()=>{const f=failState();if(f.n<5)return 0;return Math.max(0,f.t+Math.min(900,30*Math.pow(2,f.n-5))*1000-Date.now())};
+const LOCK_MS=5*60*1000;
+const lockLeft=()=>{const f=failState();if(f.n<5)return 0;const left=f.t+LOCK_MS-Date.now();if(left<=0){clearFail();return 0}return left};
 function loginAs(id){S.userId=id;localStorage.setItem('wp_user',id);S.view=null;S.tab=null;S.draftKey='';render()}
+
+/* ===== סימולציית פיזור (ADMIN): סביבה מבודדת בזיכרון. שום דבר לא נכתב ל-Firebase ושום דבר לא משפיע על הנתונים האמיתיים ===== */
+const SIM_SCEN={normal:{n:34,off:.18,range:.32,none:.08,label:'רגיל'},short:{n:18,off:.32,range:.38,none:.12,label:'מחסור בעובדים'},plenty:{n:50,off:.10,range:.25,none:.04,label:'שפע עובדים'}};
+const SIM_FIRST=['דנה','יוסי','נועה','איתי','מיכל','עומר','שירה','אורי','תמר','גיא','ליאור','רוני','מאיה','אלון','הדר','נדב','שקד','עידו','יעל','אביב','רותם','דור','לירון','ספיר','אסף','טל','ענבר','בן','מור','ניר','שני','אילן','רז','גל','יובל','קרן','עמית','לילך','אמיר','פז'];
+const SIM_LAST=['כהן','לוי','מזרחי','פרץ','ביטון','אברהם','פרידמן','אזולאי','דהן','חדד','גולן','שמש','בן דוד','אוחיון','מלכה','עמר','שרון','קפלן','רוזן','אשכנזי'];
+function simRng(seed){let a=seed>>>0;return()=>{a=(a+0x6D2B79F5)>>>0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const SIMN={on:false,seed:1,scen:'normal'};
+Object.assign(Store,{
+  sim:false,realData:null,realMode:null,
+  simStart(){
+    if(this.sim)return;
+    const me0=emp(S.userId),R=this.data,cp=o=>JSON.parse(JSON.stringify(o||{}));
+    this.realData=R;this.realMode=this.mode;
+    const d={};ALL.forEach(c=>d[c]={});
+    d.roles=cp(R.roles);d.days=cp(R.days);d.settings=cp(R.settings);
+    Object.keys(R.weeks||{}).forEach(k=>{const w=cp(R.weeks[k]);w.published=false;d.weeks[k]=w});
+    d.employees[S.userId]=Object.assign(cp(me0),{isManager:true,active:true,roles:[]});
+    this.data=d;this.mode='demo';this.sim=true;SIMN.on=true;S.draftKey='';
+    this.simSeed();
+  },
+  simExit(){
+    if(!this.sim)return;
+    this.data=this.realData;this.mode=this.realMode;this.realData=null;this.sim=false;SIMN.on=false;
+    S.lastAuto=null;S.draftKey='';
+  },
+  simClear(){ /* מוחק את כל מה שהסימולציה יצרה: משמרות, פרסום, ושינויי שבוע */
+    const d=this.data;d.shifts={};
+    Object.keys(d.weeks).forEach(k=>{const w=d.weeks[k];w.published=false});
+    S.lastAuto=null;
+  },
+  simSeed(){ /* עובדים דמיוניים + זמינות ל-3 שבועות, בצורה ריאליסטית */
+    const sc=SIM_SCEN[SIMN.scen]||SIM_SCEN.normal,rnd=simRng(SIMN.seed*7919+13),pick=a=>a[Math.floor(rnd()*a.length)];
+    const d=this.data,mine=d.employees[S.userId];
+    d.employees={};d.employees[S.userId]=mine;d.availability={};d.shifts={};d.secrets={};
+    const R=Object.values(d.roles).filter(r=>!r.bday);if(!R.length)return;
+    const used=new Set(),names=[];
+    while(names.length<sc.n){const n=pick(SIM_FIRST)+' '+pick(SIM_LAST);if(!used.has(n)){used.add(n);names.push(n)}}
+    const profiles=['full','full','full','part','part','blocker','mixed'];
+    const emps=names.map((name,i)=>{
+      const id='sim'+String(i+1).padStart(3,'0'),r=rnd(),cnt=r<.25?1:r<.6?2:r<.85?3:Math.min(R.length,4+Math.floor(rnd()*3));
+      const roles=[];while(roles.length<Math.min(cnt,R.length)){const x=pick(R).id;if(!roles.includes(x))roles.push(x)}
+      const e={id,name,roles,isManager:false,active:true,maxHours:pick([6,8,8,8,9,10]),sim:true,profile:pick(profiles)};
+      d.employees[id]=e;d.secrets[id]={id,phone:'050'+String(7000000+Math.floor(rnd()*999999)).padStart(7,'0'),v:1};return e;
+    });
+    /* כל תפקיד חייב לפחות 3 מוסמכים */
+    R.forEach(r=>{let q=emps.filter(e=>e.roles.includes(r.id));while(q.length<Math.min(3,emps.length)){const e=pick(emps);if(!e.roles.includes(r.id)){e.roles.push(r.id);q.push(e)}}});
+    const ws0=nextWeek(),notes=['לא יכול אחרי 17:00','רק אם צריך','יש לי בחינה','עד השעה 15','מעדיפ/ה בוקר','בלי סופ"ש בבקשה'];
+    for(let w=0;w<3;w++){
+      const ws=addDays(ws0,7*w);
+      emps.forEach(e=>{
+        if(rnd()<sc.none)return; /* לא הגיש/ה זמינות */
+        const p=e.profile,offP=p==='blocker'?Math.min(.65,sc.off*2.6):p==='full'?sc.off*.5:sc.off,rngP=p==='part'?.7:p==='full'?.12:sc.range;
+        const days={};
+        for(let i=0;i<7;i++){
+          const date=addDays(ws,i),h=hoursFor(date);if(h.closed)continue;
+          const o=toMin(h.open),c=toMin(h.close),x=rnd();
+          if(x<offP){days[date]={t:'off'};if(rnd()<.25)days[date].note=pick(notes);continue}
+          if(x<offP+rngP&&c-o>=240){
+            const len=Math.max(180,Math.round((c-o)*(.4+rnd()*.45)/15)*15),from=o+Math.floor(rnd()*Math.max(1,(c-o-len)/15+1))*15,to=Math.min(c,from+len);
+            const mm=m=>pad(Math.floor(m/60))+':'+pad(m%60);
+            days[date]={t:'range',from:mm(from),to:mm(to)};if(rnd()<.2)days[date].note=pick(notes);continue}
+          days[date]={t:'all'};
+        }
+        d.availability[ws+'_'+e.id]={id:ws+'_'+e.id,empId:e.id,weekStart:ws,days,updatedAt:Date.now()};
+      });
+    }
+  }
+});
 const A={
   async setup(){
     const name=$('#su-name').value.trim(),phone=normPhone($('#su-phone').value);
@@ -1311,7 +1391,7 @@ const A={
     if(Store.mode==='cloud'){
       const pin=($('#lg-pin').value||'').trim();
       if(normPhone(p).length<9||pin.length<6)return toast('נא למלא טלפון וקוד כניסה');
-      const left=lockLeft();if(left>0)return toast('יותר מדי ניסיונות. נסה שוב בעוד '+Math.ceil(left/1000)+' שניות');
+      const left=lockLeft();if(left>0)return toast('יותר מדי ניסיונות. הכניסה ננעלה ל-5 דקות. נסה שוב בעוד '+(left>60000?Math.ceil(left/60000)+' דקות':Math.ceil(left/1000)+' שניות'));
       const hk='wp_v_'+normPhone(p);let hint=1;try{hint=+localStorage.getItem(hk)||1}catch(e){}
       const order=[hint].concat([1,2,3,4,5,6].filter(x=>x!==hint));
       let err=null,okv=0;
@@ -1328,6 +1408,7 @@ const A={
     }
   },
   async logout(){
+    if(Store.sim)Store.simExit();
     try{LOG.add('auth','יציאה מהמערכת')}catch(e){}
     if(Store.mode==='cloud'){Store.stop();Store.reset();try{await Store.auth.signOut()}catch(e){}}
     localStorage.removeItem('wp_user');S.userId=null;S.view=null;S.tab=null;render();
@@ -1341,6 +1422,10 @@ const A={
     render();
   },
   day(d){S.bDay=d.date;render()},
+  simStart(){if(Store.mode!=='cloud'||!S.isAdmin)return toast('זמין רק ל-ADMIN');SIMN.seed=1+Math.floor(Math.random()*9999);SIMN.scen='normal';Store.simStart();S.tab='build';S.bDay=null;S.bWeek=nextWeek();render();window.scrollTo(0,0);toast('סימולציה פעילה — שום דבר לא נשמר באמת')},
+  simExit(){Store.simExit();S.tab='set';render();toast('יצאת מהסימולציה. הנתונים האמיתיים לא שונו')},
+  simReseed(){SIMN.seed=1+Math.floor(Math.random()*9999);Store.simSeed();S.lastAuto=null;Store.emit();toast('נוצרו עובדים וזמינויות חדשים')},
+  simClear(){if(!confirm('למחוק את כל המשמרות והפרסומים שהסימולציה יצרה? העובדים והזמינויות נשארים.'))return;Store.simClear();Store.emit();toast('נוקה ✓')},
   closeModal(){if(S.forceChange)return;closeModal()},
   /* זמינות עובד */
   avType(d){
@@ -1680,7 +1765,8 @@ async function importCsv(text){
   toast('יובאו '+added+' עובדים'+(skipped?' · דולגו '+skipped:'')+(failed?' · נכשלו '+failed:''));
   if(creds.length)credsModal(creds);
 }
-const C={ /* שינוי ערך בשדה */
+const C={
+  simScenario(el){SIMN.scen=el.value;Store.simSeed();S.lastAuto=null;Store.emit();toast('תרחיש: '+SIM_SCEN[SIMN.scen].label)}, /* שינוי ערך בשדה */
   impFile(el){const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{importCsv(String(r.result));el.value=''};r.readAsText(f,'utf-8')},
   logRange(el){S.logRange=el.value;S.logLimit=100;if(document.activeElement)document.activeElement.blur();render()},logUser(el){S.logUser=el.value;S.logLimit=100;if(document.activeElement)document.activeElement.blur();render()},
   empRole(el){S.empRole=el.value;if(document.activeElement)document.activeElement.blur();render()},empStatus(el){S.empStatus=el.value;if(document.activeElement)document.activeElement.blur();render()},
