@@ -5,6 +5,8 @@ service cloud.firestore {
     function userDoc() { return /databases/$(database)/documents/users/$(request.auth.uid); }
     function isActive() { return signedIn() && exists(userDoc()) && get(userDoc()).data.active == true; }
     function isMgr() { return isActive() && get(userDoc()).data.isManager == true; }
+    // ADMIN: מנהל ראשי — מעל מנהל. מוגדר רק ע"י ADMIN אחר, בהגדרה הראשונית או ידנית בקונסול
+    function isAdm() { return isMgr() && get(userDoc()).data.get('isAdmin', false) == true; }
     function myEmp() { return get(userDoc()).data.empId; }
     function empDoc(id) { return /databases/$(database)/documents/employees/$(id); }
 
@@ -26,20 +28,35 @@ service cloud.firestore {
     }
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isMgr());
-      allow create: if isMgr() || (signedIn() && request.auth.uid == uid
-        && request.resource.data.isManager == true && request.resource.data.active == true
-        && !exists(/databases/$(database)/documents/meta/bootstrap));
+      // מנהל רגיל יוצר/מעדכן/מוחק רק משתמשים רגילים (לא מנהלים ולא ADMIN). ADMIN — הכול.
+      allow create: if isAdm()
+        || (isMgr() && request.resource.data.get('isManager', false) == false && !('isAdmin' in request.resource.data))
+        || (signedIn() && request.auth.uid == uid
+            && request.resource.data.isManager == true && request.resource.data.isAdmin == true
+            && request.resource.data.active == true
+            && !exists(/databases/$(database)/documents/meta/bootstrap));
       // משתמש רשאי רק לסמן שהחליף קוד (mustChange=false) ושהסיסמה חזקה (strong)
-      allow update: if isMgr() || (isActive() && request.auth.uid == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mustChange', 'strong'])
-        && request.resource.data.mustChange == false);
-      allow delete: if isMgr();
+      allow update: if isAdm()
+        || (isMgr() && resource.data.get('isManager', false) == false
+            && request.resource.data.get('isManager', false) == false && !('isAdmin' in request.resource.data))
+        || (isActive() && request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mustChange', 'strong'])
+            && request.resource.data.mustChange == false);
+      allow delete: if isAdm() || (isMgr() && resource.data.get('isManager', false) == false);
     }
     // קודי כניסה כבר לא נשמרים כאן; נשמרים רק טלפון, גרסת חשבון ומזהה חשבון
     match /secrets/{id} {
-      allow read, write: if isMgr();
+      allow read: if isMgr();
+      // קודים/חשבונות של מנהלים — רק ADMIN
+      allow write: if isAdm() || (isMgr() && !(exists(empDoc(id)) && get(empDoc(id)).data.get('isManager', false) == true));
     }
-    match /employees/{id} { allow read: if isActive(); allow write: if isMgr(); }
+    match /employees/{id} {
+      allow read: if isActive();
+      allow create: if isAdm() || (isMgr() && request.resource.data.get('isManager', false) == false);
+      allow update: if isAdm() || (isMgr() && resource.data.get('isManager', false) == false
+        && request.resource.data.get('isManager', false) == false);
+      allow delete: if isAdm() || (isMgr() && resource.data.get('isManager', false) == false);
+    }
     match /roles/{id}     { allow read: if isActive(); allow write: if isMgr(); }
     match /days/{id}      { allow read: if isActive(); allow write: if isMgr(); }
     match /weeks/{id}     { allow read: if isActive(); allow write: if isMgr(); }
@@ -51,11 +68,12 @@ service cloud.firestore {
         (!wkPub(request.resource.data.get('ws', 'none')) && !wkPub(resource.data.get('ws', 'none')))
         // השלמת שדה ws למשמרות ישנות (מיגרציה חד-פעמית)
         || (!('ws' in resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ws'])));
-      allow delete: if isMgr() && !wkPub(resource.data.get('ws', 'none'));
+      // משמרות של עובד שכבר נמחק ניתנות למחיקה גם בשבוע מפורסם
+      allow delete: if isMgr() && (!wkPub(resource.data.get('ws', 'none')) || !exists(empDoc(resource.data.empId)));
     }
     // יומן פעולות: כל משתמש פעיל כותב רק רשומה אמיתית על עצמו; רק מנהל קורא/מוחק
     match /logs/{id} {
-      allow read, delete: if isMgr();
+      allow read, delete: if isAdm();
       allow create: if isActive()
         && request.resource.data.keys().hasOnly(['id', 'ts', 'empId', 'name', 'mgr', 'type', 'text'])
         && request.resource.data.id == id
